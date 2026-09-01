@@ -914,6 +914,17 @@ extension MenuBarItemManager {
         }
     }
 
+    /// The tolerance used when checking whether an item has reached its
+    /// destination.
+    ///
+    /// Window bounds come from the window server and carry sub-point values on a
+    /// scaled display, so two items that are visually flush can report edges that
+    /// differ by a fraction. Comparing them exactly made a move that had in fact
+    /// succeeded look like a failure, sending it around the retry loop again — up
+    /// to `maxAttempts` times, each with its own wait. A tolerance well under the
+    /// width of the narrowest menu bar item cannot accept a wrong position.
+    private nonisolated static let positionTolerance: CGFloat = 2
+
     /// Returns a Boolean value that indicates whether the given menu bar
     /// item has the correct position, relative to the given destination.
     private nonisolated func itemHasCorrectPosition(
@@ -922,9 +933,10 @@ extension MenuBarItemManager {
     ) async throws -> Bool {
         let itemBounds = try await getCurrentBounds(for: item)
         let targetBounds = try await getCurrentBounds(for: destination.targetItem)
+        let tolerance = Self.positionTolerance
         return switch destination {
-        case .leftOfItem: itemBounds.maxX == targetBounds.minX
-        case .rightOfItem: itemBounds.minX == targetBounds.maxX
+        case .leftOfItem: abs(itemBounds.maxX - targetBounds.minX) <= tolerance
+        case .rightOfItem: abs(itemBounds.minX - targetBounds.maxX) <= tolerance
         }
     }
 

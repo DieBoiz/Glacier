@@ -443,14 +443,10 @@ extension HIDEventManager {
 
 extension HIDEventManager {
     /// Returns the best screen to use for event manager calculations.
+    /// Uses the screen under the mouse so menu bar hover/click work correctly
+    /// with multiple displays (e.g. external monitor).
     func bestScreen(appState: AppState) -> NSScreen? {
-        guard
-            appState.activeSpace.isFullscreen,
-            let screen = NSScreen.screenWithMouse
-        else {
-            return NSScreen.main
-        }
-        return screen
+        NSScreen.screenWithMouse ?? NSScreen.main
     }
 
     /// A Boolean value that indicates whether the mouse pointer is within
