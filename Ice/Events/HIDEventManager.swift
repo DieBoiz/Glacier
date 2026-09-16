@@ -412,10 +412,14 @@ extension HIDEventManager {
                 // that ignored the press is not asked again while Ice runs.
                 Self.systemItemsIgnoringPress.insert(systemItem.identifier)
             }
-            concealer.suspend(for: .milliseconds(1500))
+            // Notification Center draws inside a window it keeps on screen at all times, so
+            // its opening cannot be seen in the window list (measured on macOS 27.0) and the
+            // concealment cannot be put back on that signal. The lift is therefore kept short
+            // instead: the click is replayed after 150 ms and MenuBarAgent acts on it at once.
+            concealer.suspend(for: .milliseconds(400))
             try? await Task.sleep(for: .milliseconds(150))
             Self.replayClick(at: location)
-            if await Self.waitForPanel(baseline: baseline, pollsOf50ms: 24) {
+            if await Self.waitForPanel(baseline: baseline, pollsOf50ms: 4) {
                 concealer.endSuspension()
             }
         }
