@@ -38,6 +38,12 @@ external_leftmost() {
     screencapture -x -R "$REGION" "$WORK/steady/$1.png"
     "$WORK/bin/analyze-frames" "$WORK/steady" 700 1220 | awk -v n="$1" '$1 == n { print $2 }'
 }
+start_ice() {
+    open "$HOME/Applications/Ice.app"
+    for _ in $(seq 1 40); do pgrep -x Ice >/dev/null && return 0; sleep 0.25; done
+}
+# Leave Ice running, the way the run found it. A run that ended with Ice down left the
+# machine concealing nothing, and whatever was looked at next showed nothing worth seeing.
 restore() {
     quit_ice
     defaults write com.jordanbaird.Ice MacOS27Layout "$LAYOUT_BEFORE"
@@ -50,6 +56,7 @@ restore() {
         echo "FAIL  the saved layout was left changed; it was:"
         printf '%s\n' "$LAYOUT_BEFORE"
     fi
+    start_ice
 }
 trap restore EXIT
 

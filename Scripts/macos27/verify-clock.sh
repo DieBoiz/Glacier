@@ -12,7 +12,17 @@ quit_ice() {
     osascript -e 'tell application id "com.jordanbaird.Ice" to quit' >/dev/null 2>&1 || true
     for _ in $(seq 1 40); do pgrep -x Ice >/dev/null || return 0; sleep 0.25; done
 }
-trap quit_ice EXIT
+start_ice() {
+    open "$HOME/Applications/Ice.app"
+    for _ in $(seq 1 40); do pgrep -x Ice >/dev/null && return 0; sleep 0.25; done
+}
+# Leave Ice running, the way the run found it. A run that ended with Ice down left the
+# machine concealing nothing, and whatever was looked at next showed nothing worth seeing.
+restore() {
+    quit_ice
+    start_ice
+}
+trap restore EXIT
 
 quit_ice
 open "$HOME/Applications/Ice.app"
