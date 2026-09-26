@@ -286,22 +286,40 @@ extension Bridging {
     ///
     /// - Parameter windowID: An identifier for a window.
     static func isWindowOnScreen(_ windowID: CGWindowID) -> Bool {
+        !getOnScreenWindowIDs(in: CollectionOfOne(windowID)).isEmpty
+    }
+
+    /// Returns the identifiers of the given windows that are on screen.
+    ///
+    /// Prefer this method to calling ``isWindowOnScreen(_:)`` for each
+    /// window, as it gets the on screen window list and the displays
+    /// only once.
+    ///
+    /// - Parameter windowIDs: Identifiers for windows.
+    static func getOnScreenWindowIDs(in windowIDs: some Sequence<CGWindowID>) -> Set<CGWindowID> {
         // On screen window list could potentially include menu bar
         // items hidden via drag-and-drop (seems like a bug in macOS?).
         //
         // Checking individual displays could be relatively expensive,
         // so we can at least short circuit if the window is _not_ in
         // the list.
-        if !getOnScreenWindowList().contains(windowID) {
-            return false
+        let onScreenList = Set(getOnScreenWindowList())
+        var displayBounds: [CGRect]?
+        var result = Set<CGWindowID>()
+
+        for windowID in windowIDs where onScreenList.contains(windowID) {
+            guard let windowBounds = getWindowBounds(for: windowID) else {
+                continue
+            }
+            if displayBounds == nil {
+                displayBounds = getActiveDisplayList().map { CGDisplayBounds($0) }
+            }
+            if displayBounds?.contains(where: { $0.intersects(windowBounds) }) == true {
+                result.insert(windowID)
+            }
         }
-        guard let windowBounds = getWindowBounds(for: windowID) else {
-            return false
-        }
-        return getActiveDisplayList().contains { displayID in
-            let displayBounds = CGDisplayBounds(displayID)
-            return displayBounds.intersects(windowBounds)
-        }
+
+        return result
     }
 
     // MARK: Private Window List Helpers
