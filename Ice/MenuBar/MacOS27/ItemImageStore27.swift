@@ -83,6 +83,18 @@ final class ItemImageStore27 {
                 self?.shareableDisplay = nil
             }
         }
+        // Glyphs are stored in the colour that suits the current appearance, so a switch
+        // between light and dark needs them captured again. Observed before the store is
+        // read: a store that is reset below would otherwise never be told.
+        appearanceObserver = DistributedNotificationCenter.default().addObserver(
+            forName: DistributedNotificationCenter.interfaceThemeChangedNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.discardImages()
+            }
+        }
         let versionFile = directory.appendingPathComponent("version.txt")
         guard (try? String(contentsOf: versionFile, encoding: .utf8)) == Self.storeVersion else {
             try? FileManager.default.removeItem(at: directory)
@@ -98,17 +110,6 @@ final class ItemImageStore27 {
                 var entry = entry
                 entry.lastSeen = entry.lastSeen ?? now
                 return entry
-            }
-        }
-        // Glyphs are stored in the colour that suits the current appearance, so a switch
-        // between light and dark needs them captured again.
-        appearanceObserver = DistributedNotificationCenter.default().addObserver(
-            forName: DistributedNotificationCenter.interfaceThemeChangedNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.discardImages()
             }
         }
     }
