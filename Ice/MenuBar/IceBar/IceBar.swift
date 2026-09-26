@@ -253,6 +253,7 @@ private final class IceBarHostingView: NSHostingView<IceBarContentView> {
     ) {
         let rootView = IceBarContentView(
             appState: appState,
+            appearanceManager: appState.appearanceManager,
             colorManager: colorManager,
             itemManager: appState.itemManager,
             imageCache: appState.imageCache,
@@ -281,7 +282,10 @@ private final class IceBarHostingView: NSHostingView<IceBarContentView> {
 // MARK: - IceBarContentView
 
 private struct IceBarContentView: View {
-    @ObservedObject var appState: AppState
+    // Not observed, as the app state forwards changes from all of its
+    // submodels. The ones this view depends on are observed directly.
+    let appState: AppState
+    @ObservedObject var appearanceManager: MenuBarAppearanceManager
     @ObservedObject var colorManager: IceBarColorManager
     @ObservedObject var itemManager: MenuBarItemManager
     @ObservedObject var imageCache: MenuBarItemImageCache
@@ -297,7 +301,7 @@ private struct IceBarContentView: View {
     }
 
     private var configuration: MenuBarAppearanceConfigurationV2 {
-        appState.appearanceManager.configuration
+        appearanceManager.configuration
     }
 
     private var horizontalPadding: CGFloat {
@@ -319,7 +323,7 @@ private struct IceBarContentView: View {
             return nil
         }
         if configuration.shapeKind != .noShape && configuration.isInset && screen.hasNotch {
-            return menuBarHeight - appState.appearanceManager.menuBarInsetAmount * 2
+            return menuBarHeight - appearanceManager.menuBarInsetAmount * 2
         }
         return menuBarHeight
     }
@@ -398,7 +402,7 @@ private struct IceBarContentView: View {
                 HStack(spacing: 0) {
                     ForEach(items, id: \.windowID) { item in
                         IceBarItemView(
-                            imageCache: imageCache,
+                            image: imageCache.images[item.tag],
                             itemManager: itemManager,
                             menuBarManager: menuBarManager,
                             item: item,
@@ -420,9 +424,11 @@ private struct IceBarContentView: View {
 // MARK: - IceBarItemView
 
 private struct IceBarItemView: View {
-    @ObservedObject var imageCache: MenuBarItemImageCache
-    @ObservedObject var itemManager: MenuBarItemManager
-    @ObservedObject var menuBarManager: MenuBarManager
+    // The managers are only used by the click actions, so they aren't
+    // observed. The content view passes in the image.
+    let image: MenuBarItemImageCache.CapturedImage?
+    let itemManager: MenuBarItemManager
+    let menuBarManager: MenuBarManager
 
     let item: MenuBarItem
     let section: MenuBarSection.Name
@@ -471,16 +477,9 @@ private struct IceBarItemView: View {
         }
     }
 
-    private var image: NSImage? {
-        guard let cachedImage = imageCache.images[item.tag] else {
-            return nil
-        }
-        return cachedImage.nsImage
-    }
-
     var body: some View {
         if let image {
-            Image(nsImage: image)
+            Image(nsImage: image.nsImage)
                 .contentShape(Rectangle())
                 .overlay {
                     IceBarItemClickView(
