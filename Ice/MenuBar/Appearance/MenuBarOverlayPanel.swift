@@ -190,7 +190,13 @@ final class MenuBarOverlayPanel: NSPanel {
         Timer.publish(every: 5, on: .main, in: .default)
             .autoconnect()
             .sink { [weak self] _ in
-                self?.insertUpdateFlag(.desktopWallpaper)
+                guard
+                    let self,
+                    appState?.appearanceManager.configuration.shapeKind != .noShape
+                else {
+                    return
+                }
+                insertUpdateFlag(.desktopWallpaper)
             }
             .store(in: &c)
 
@@ -234,6 +240,18 @@ final class MenuBarOverlayPanel: NSPanel {
             appState.menuBarManager.$isMenuBarHiddenBySystem
                 .sink { [weak self] isHidden in
                     self?.alphaValue = isHidden ? 0 : 1
+                }
+                .store(in: &c)
+
+            // The wallpaper is only captured for shapes that draw it, so
+            // capture it as soon as the shape changes.
+            appState.appearanceManager.$configuration
+                .map(\.shapeKind)
+                .removeDuplicates()
+                .dropFirst()
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] _ in
+                    self?.insertUpdateFlag(.desktopWallpaper)
                 }
                 .store(in: &c)
         }
@@ -323,16 +341,22 @@ final class MenuBarOverlayPanel: NSPanel {
     /// Stores the area of the desktop wallpaper that is under the menu bar
     /// of the given display.
     private func updateDesktopWallpaper(for display: CGDirectDisplayID, with windows: [WindowInfo]) {
+        // The wallpaper is only drawn around the full and split shapes.
+        guard let shapeKind = appState?.appearanceManager.configuration.shapeKind, shapeKind != .noShape else {
+            if desktopWallpaper != nil {
+                desktopWallpaper = nil
+            }
+            return
+        }
         guard
             let wallpaperWindow = WindowInfo.wallpaperWindow(from: windows, for: display),
             let menuBarWindow = WindowInfo.menuBarWindow(from: windows, for: display)
         else {
             return
         }
-        let wallpaper = ScreenCapture.captureWindow(with: wallpaperWindow.windowID, screenBounds: menuBarWindow.bounds)
-        if desktopWallpaper?.dataProvider?.data != wallpaper?.dataProvider?.data {
-            desktopWallpaper = wallpaper
-        }
+        // Comparing the image data would copy it twice, which costs more
+        // than the redraw it saves.
+        desktopWallpaper = ScreenCapture.captureWindow(with: wallpaperWindow.windowID, screenBounds: menuBarWindow.bounds)
     }
 
     /// Updates the panel to prepare for display.
