@@ -7,11 +7,23 @@ import AXSwift
 import Cocoa
 
 enum AXHelpers {
-    private static let queue = DispatchQueue.targetingGlobal(
-        label: "AXHelpers.queue",
-        qos: .userInteractive,
-        attributes: .concurrent
-    )
+    /// How long an Accessibility message waits for a reply, in seconds.
+    ///
+    /// The system default is 6 seconds, and the calls here are synchronous, so an app
+    /// that stops answering would hold the calling thread (often the main thread) that
+    /// long. Elements that set their own timeout keep it.
+    private static let messagingTimeout: Float = 1.0
+
+    private static let queue: DispatchQueue = {
+        // Every helper goes through the queue, so the global timeout is in place
+        // before the first message is sent.
+        UIElement.globalMessagingTimeout = messagingTimeout
+        return DispatchQueue.targetingGlobal(
+            label: "AXHelpers.queue",
+            qos: .userInteractive,
+            attributes: .concurrent
+        )
+    }()
 
     @discardableResult
     static func isProcessTrusted(prompt: Bool = false) -> Bool {
