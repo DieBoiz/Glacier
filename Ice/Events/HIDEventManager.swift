@@ -42,6 +42,10 @@ final class HIDEventManager: ObservableObject {
         readAt: ContinuousClock.Instant
     )?
 
+    /// The bounds of the menu bar item windows last read before macOS 27
+    /// (see `menuBarItemBounds()`).
+    private var menuBarItemBoundsCache: (bounds: [CGRect], readAt: ContinuousClock.Instant)?
+
     /// What a pending show-on-hover task is going to do.
     private enum HoverAction: Equatable {
         case show(CGDirectDisplayID)
@@ -221,10 +225,12 @@ final class HIDEventManager: ObservableObject {
             }
             .store(in: &c)
 
-            // The application menu belongs to the frontmost app, and differs between spaces.
+            // The application menu belongs to the frontmost app, and differs between spaces,
+            // as do the item windows.
             appState.$activeSpace
                 .sink { [weak self] _ in
                     self?.applicationMenuFrameCache = nil
+                    self?.menuBarItemBoundsCache = nil
                 }
                 .store(in: &c)
         }
@@ -911,13 +917,28 @@ extension HIDEventManager {
                 systemFrames: systemFrames
             )
         }
-        let windowIDs = Bridging.getMenuBarWindowList(option: [.onScreen, .activeSpace, .itemsOnly])
-        return windowIDs.contains { windowID in
-            guard let bounds = Bridging.getWindowBounds(for: windowID) else {
-                return false
-            }
-            return bounds.contains(mouseLocation)
+        return menuBarItemBounds().contains { bounds in
+            bounds.contains(mouseLocation)
         }
+    }
+
+    /// Returns the bounds of the menu bar item windows on screen, before macOS 27.
+    ///
+    /// Reading them asks the window server about every item window, and the hit tests
+    /// run on every mouse move in the menu bar, so the bounds are reused for a moment.
+    private func menuBarItemBounds() -> [CGRect] {
+        if
+            let cache = menuBarItemBoundsCache,
+            ContinuousClock.now < cache.readAt + .milliseconds(200)
+        {
+            return cache.bounds
+        }
+        let windowIDs = Bridging.getMenuBarWindowList(option: [.onScreen, .activeSpace, .itemsOnly])
+        let bounds = windowIDs.compactMap { windowID in
+            Bridging.getWindowBounds(for: windowID)
+        }
+        menuBarItemBoundsCache = (bounds, .now)
+        return bounds
     }
 
     /// A Boolean value that indicates whether the mouse pointer is within
