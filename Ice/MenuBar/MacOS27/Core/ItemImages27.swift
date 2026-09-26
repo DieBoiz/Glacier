@@ -421,6 +421,22 @@ enum ItemImages27 {
         return result
     }
 
+    /// The same pixels with each colour channel scaled by the pixel's opacity, as a
+    /// premultiplied bitmap holds them, rounded to the nearest value.
+    ///
+    /// Integer arithmetic gives exactly the rounded result: a product of two bytes over
+    /// 255 never falls halfway between two whole numbers.
+    static func premultiplied(pixels: [UInt8]) -> [UInt8] {
+        var result = pixels
+        for index in stride(from: 0, to: pixels.count - 3, by: 4) {
+            let opacity = UInt32(pixels[index + 3])
+            for channel in 0..<3 {
+                result[index + channel] = UInt8((UInt32(pixels[index + channel]) * opacity + 127) / 255)
+            }
+        }
+        return result
+    }
+
     /// Whether a tile photographs an item caught mid-fade rather than the item itself.
     ///
     /// An item fading in or out is drawn part-transparent, so its capture holds a faint glyph

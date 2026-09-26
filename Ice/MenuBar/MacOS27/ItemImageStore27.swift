@@ -39,13 +39,16 @@ final class ItemImageStore27 {
     /// The margin left on each side of a glyph, in points, so items are spaced evenly and
     /// with the menu bar's own rhythm: its glyphs sit 18 to 29 points apart, median 22
     /// (measured on macOS 27.0), which is twice this margin.
-    private static let glyphMargin: CGFloat = 11
+    private nonisolated static let glyphMargin: CGFloat = 11
 
     private let logger = Logger(category: "ItemImageStore27")
+    private nonisolated static let processingLogger = Logger(category: "ItemImageStore27")
     private let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         .appendingPathComponent("Ice/ItemImages", isDirectory: true)
     private var index = [String: IndexEntry]()
     private var loaded = [String: CapturedImage]()
+    /// A hash of each glyph stored since launch, so an unchanged one is not stored again.
+    private var digests = [String: Int]()
     private var photoSchedule = PhotoSchedule27()
 
     /// The capture under way, so captures follow one another instead of overlapping.
@@ -62,7 +65,21 @@ final class ItemImageStore27 {
 
     private var appearanceObserver: NSObjectProtocol?
 
+    /// The display last captured, as ScreenCaptureKit describes it.
+    private var shareableDisplay: SCDisplay?
+    private var screenObserver: NSObjectProtocol?
+
     init() {
+        // A display whose mode changed can keep its frame and change its scale.
+        screenObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.shareableDisplay = nil
+            }
+        }
         let versionFile = directory.appendingPathComponent("version.txt")
         guard (try? String(contentsOf: versionFile, encoding: .utf8)) == Self.storeVersion else {
             try? FileManager.default.removeItem(at: directory)
@@ -91,6 +108,7 @@ final class ItemImageStore27 {
     private func discardImages() {
         loaded.removeAll()
         index.removeAll()
+        digests.removeAll()
         photoSchedule = PhotoSchedule27()
         let directory = directory
         Task.detached(priority: .utility) {
@@ -180,43 +198,106 @@ final class ItemImageStore27 {
             Dictionary(items.map { ($0.tag.description, $0.bounds) }, uniquingKeysWith: { first, _ in first })
         }
         let settled = ItemImages27.settledTags(before: frames(items), after: frames(await MenuBarItemProvider27.items()))
-        var skipped = 0
+        let drawn = items.filter { $0.isOnScreen && !$0.isControlItem && !concealedPIDs.contains($0.ownerPID) }
+        let tiles = drawn
+            .filter { settled.contains($0.tag.description) }
+            .map { Tile(key: $0.tag.description, frame: $0.bounds) }
+        let skipped = drawn.count - tiles.count
+        let colour = Self.glyphColor()
+        let known = digests
+        // Cutting the glyphs out and encoding them is pixel work on every item of the bar, done
+        // on every capture. It runs off the main thread, which the Ice Bar is being drawn on.
+        let processed = await Task.detached(priority: .userInitiated) {
+            Self.processTiles(tiles, strip: strip, stripFrame: stripFrame, scale: scale, colour: colour, knownDigests: known)
+        }.value
         var stored = 0
+        for tile in processed where store(tile, scale: scale) {
+            stored += 1
+        }
+        if stored > 0 {
+            writeIndex()
+        }
+        logger.debug(
+            """
+            Stored \(stored, privacy: .public) changed item images of \(processed.count, privacy: .public) \
+            from display \(displayID, privacy: .public), skipped \(skipped, privacy: .public) that moved
+            """
+        )
+    }
+
+    /// An item to cut out of a capture of the bar.
+    private struct Tile: Sendable {
+        let key: String
+        let frame: CGRect
+    }
+
+    /// A glyph cut out of a capture of the bar.
+    private struct ProcessedTile: @unchecked Sendable {
+        let key: String
+        let image: CGImage
+        let digest: Int
+        /// Whether the glyph differs from the one stored for the item.
+        let isChanged: Bool
+        /// The glyph encoded for the disk, if it changed.
+        let png: Data?
+    }
+
+    /// Cuts the glyph of each tile out of the strip, and encodes the ones that changed.
+    private nonisolated static func processTiles(
+        _ tiles: [Tile],
+        strip: CGImage,
+        stripFrame: CGRect,
+        scale: CGFloat,
+        colour: (r: UInt8, g: UInt8, b: UInt8),
+        knownDigests: [String: Int]
+    ) -> [ProcessedTile] {
+        let crops = tiles.compactMap { tile -> (key: String, image: CGImage)? in
+            guard
+                let rect = ItemImages27.cropRect(itemFrame: tile.frame, stripFrame: stripFrame, scale: scale),
+                let crop = strip.cropping(to: rect)
+            else {
+                return nil
+            }
+            return (tile.key, crop)
+        }
         // MenuBarAgent draws every glyph on a bar in one colour, white or black. Deciding which
         // for the whole strip, rather than tile by tile, keeps a dark patch of wallpaper behind
         // one item from passing for its glyph (see `ItemImages27.toneVotes`).
         var votes = (light: 0, dark: 0)
-        for item in items where item.isOnScreen && !item.isControlItem && !concealedPIDs.contains(item.ownerPID) {
-            guard
-                settled.contains(item.tag.description),
-                let rect = ItemImages27.cropRect(itemFrame: item.bounds, stripFrame: stripFrame, scale: scale),
-                let crop = strip.cropping(to: rect),
-                let pixels = Self.pixels(of: crop)
-            else {
+        for crop in crops {
+            guard let pixels = pixels(of: crop.image) else {
                 continue
             }
-            let tileVotes = ItemImages27.toneVotes(pixels: pixels, width: crop.width, height: crop.height)
+            let tileVotes = ItemImages27.toneVotes(pixels: pixels, width: crop.image.width, height: crop.image.height)
             votes.light += tileVotes.light
             votes.dark += tileVotes.dark
         }
         let tone: ItemImages27.GlyphTone? = votes.light + votes.dark == 0 ? nil : (votes.light >= votes.dark ? .light : .dark)
-        for item in items where item.isOnScreen && !item.isControlItem && !concealedPIDs.contains(item.ownerPID) {
-            guard settled.contains(item.tag.description) else {
-                skipped += 1
-                continue
+        return crops.compactMap { crop in
+            guard let glyph = withoutBackground(crop.image, scale: scale, tone: tone, colour: colour) else {
+                return nil
             }
-            guard
-                let rect = ItemImages27.cropRect(itemFrame: item.bounds, stripFrame: stripFrame, scale: scale),
-                let image = strip.cropping(to: rect),
-                let glyph = withoutBackground(image, scale: scale, tone: tone)
-            else {
-                continue
+            let digest = digest(of: glyph, scale: scale)
+            // Most captures find every glyph as it was, and encoding and writing each of them
+            // again every few seconds was wasted work.
+            guard knownDigests[crop.key] != digest else {
+                return ProcessedTile(key: crop.key, image: glyph, digest: digest, isChanged: false, png: nil)
             }
-            store(glyph, scale: scale, key: item.tag.description)
-            stored += 1
+            let png = NSBitmapImageRep(cgImage: glyph).representation(using: .png, properties: [:])
+            return ProcessedTile(key: crop.key, image: glyph, digest: digest, isChanged: true, png: png)
         }
-        writeIndex()
-        logger.debug("Stored \(stored, privacy: .public) item images from display \(displayID, privacy: .public), skipped \(skipped, privacy: .public) that moved")
+    }
+
+    /// A hash of the image's pixels, to tell whether a glyph changed since it was stored.
+    private nonisolated static func digest(of image: CGImage, scale: CGFloat) -> Int {
+        var hasher = Hasher()
+        hasher.combine(image.width)
+        hasher.combine(image.height)
+        hasher.combine(scale)
+        if let data = image.dataProvider?.data, let bytes = CFDataGetBytePtr(data) {
+            hasher.combine(bytes: UnsafeRawBufferPointer(start: bytes, count: CFDataGetLength(data)))
+        }
+        return hasher.finalize()
     }
 
     /// Shows the applications of items that have no image for a moment, and captures them.
@@ -270,9 +351,18 @@ final class ItemImageStore27 {
 
     private func captureStrip(displayID: CGDirectDisplayID, size: CGSize) async -> (CGImage, CGFloat)? {
         do {
-            let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
-            guard let display = content.displays.first(where: { $0.displayID == displayID }) else {
-                return nil
+            // Listing the shareable content asks the window server for every window, so the
+            // display it names is kept until a capture of it fails or the display changes.
+            let display: SCDisplay
+            if let cached = shareableDisplay, cached.displayID == displayID, cached.frame == CGDisplayBounds(displayID) {
+                display = cached
+            } else {
+                let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+                guard let found = content.displays.first(where: { $0.displayID == displayID }) else {
+                    return nil
+                }
+                display = found
+                shareableDisplay = found
             }
             let filter = SCContentFilter(display: display, excludingWindows: [])
             let scale = CGFloat(filter.pointPixelScale)
@@ -284,6 +374,7 @@ final class ItemImageStore27 {
             let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: configuration)
             return (image, scale)
         } catch {
+            shareableDisplay = nil
             logger.error("Could not capture the menu bar: \(error, privacy: .public)")
             return nil
         }
@@ -297,7 +388,7 @@ final class ItemImageStore27 {
     }
 
     /// The image's pixels, four bytes each, as the image rules expect them.
-    private static func pixels(of image: CGImage) -> [UInt8]? {
+    private nonisolated static func pixels(of image: CGImage) -> [UInt8]? {
         var data = [UInt8](repeating: 0, count: image.width * image.height * 4)
         let drawn = data.withUnsafeMutableBytes { buffer -> Bool in
             guard let context = CGContext(
@@ -319,7 +410,12 @@ final class ItemImageStore27 {
 
     /// The image with the menu bar behind the glyph made transparent, the glyph recoloured
     /// for the panel, and the bar's own padding replaced by an even margin.
-    private func withoutBackground(_ image: CGImage, scale: CGFloat, tone: ItemImages27.GlyphTone?) -> CGImage? {
+    private nonisolated static func withoutBackground(
+        _ image: CGImage,
+        scale: CGFloat,
+        tone: ItemImages27.GlyphTone?,
+        colour: (r: UInt8, g: UInt8, b: UInt8)
+    ) -> CGImage? {
         let width = image.width
         let height = image.height
         let count = width * height * 4
@@ -348,22 +444,16 @@ final class ItemImageStore27 {
         // later, standing still. This comes before faint marks are dropped, or a faded glyph
         // would be dropped whole and stored as an empty tile.
         if ItemImages27.isFaded(pixels: removed, width: width, height: height) {
-            logger.debug("Refusing a tile of an item caught mid-fade")
+            processingLogger.debug("Refusing a tile of an item caught mid-fade")
             return nil
         }
         // Wallpaper detail in the glyph's own colour survives the colour test; marks that
         // never reach solid are dropped whole, so the trim below does not keep them either.
-        var keyed = ItemImages27.tinted(
-            pixels: ItemImages27.droppingFaintMarks(pixels: removed, width: width, height: height),
-            colour: Self.glyphColor()
-        )
         // The bitmap holds premultiplied colours, so each channel follows the new opacity.
-        for index in stride(from: 0, to: count, by: 4) {
-            let opacity = Double(keyed[index + 3]) / 255
-            for channel in 0..<3 {
-                keyed[index + channel] = UInt8((Double(keyed[index + channel]) * opacity).rounded())
-            }
-        }
+        var keyed = ItemImages27.premultiplied(pixels: ItemImages27.tinted(
+            pixels: ItemImages27.droppingFaintMarks(pixels: removed, width: width, height: height),
+            colour: colour
+        ))
         keyed.withUnsafeMutableBytes { buffer in
             bytes.update(from: buffer.bindMemory(to: UInt8.self).baseAddress!, count: count)
         }
@@ -376,7 +466,7 @@ final class ItemImageStore27 {
         }
         // The glyph is drawn into a fresh tile rather than cropped with margins, because a
         // capture often ends right at the glyph's edge and then cropping has no room left.
-        let margin = Int((Self.glyphMargin * scale).rounded())
+        let margin = Int((glyphMargin * scale).rounded())
         let glyphWidth = columns.upperBound - columns.lowerBound + 1
         let paddedWidth = glyphWidth + margin * 2
         guard
@@ -397,18 +487,25 @@ final class ItemImageStore27 {
         return padded.makeImage() ?? keyedImage
     }
 
-    private func store(_ image: CGImage, scale: CGFloat, key: String) {
+    /// Keeps a glyph cut from a capture, returning whether it changed.
+    private func store(_ tile: ProcessedTile, scale: CGFloat) -> Bool {
+        guard tile.isChanged else {
+            return false
+        }
+        let key = tile.key
         let fileName = ItemImages27.fileName(forTag: key)
-        loaded[key] = CapturedImage(cgImage: image, scale: scale)
+        loaded[key] = CapturedImage(cgImage: tile.image, scale: scale)
         index[key] = IndexEntry(fileName: fileName, scale: scale)
-        guard let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) else {
-            return
+        digests[key] = tile.digest
+        guard let data = tile.png else {
+            return true
         }
         let directory = directory
         Task.detached(priority: .utility) {
             try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             try? data.write(to: directory.appendingPathComponent(fileName), options: .atomic)
         }
+        return true
     }
 
     private func writeIndex() {

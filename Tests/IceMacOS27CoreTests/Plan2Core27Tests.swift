@@ -69,6 +69,24 @@ struct ItemImages27Tests {
         #expect(name.hasSuffix(".png"))
         #expect(!name.contains("/") && !name.contains(":"))
     }
+
+    @Test("Premultiplying matches rounding each channel times its opacity")
+    func premultiplied() {
+        var pixels = [UInt8]()
+        for colour in stride(from: 0, through: 255, by: 17) {
+            for alpha in stride(from: 0, through: 255, by: 15) {
+                pixels += [UInt8(colour), UInt8(255 - colour), 128, UInt8(alpha)]
+            }
+        }
+        let result = ItemImages27.premultiplied(pixels: pixels)
+        for index in stride(from: 0, to: pixels.count, by: 4) {
+            let opacity = Double(pixels[index + 3]) / 255
+            for channel in 0..<3 {
+                #expect(result[index + channel] == UInt8((Double(pixels[index + channel]) * opacity).rounded()))
+            }
+            #expect(result[index + 3] == pixels[index + 3])
+        }
+    }
 }
 
 @Suite("PhotoSchedule27")

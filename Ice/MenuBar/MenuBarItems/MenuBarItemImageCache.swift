@@ -109,9 +109,19 @@ final class MenuBarItemImageCache: ObservableObject {
         var c = Set<AnyCancellable>()
 
         if let appState {
+            // On macOS 27 an update captures the display and reads every application's items
+            // twice through Accessibility, so the timer only keeps changing glyphs current.
+            // Opening the Ice Bar, search or the layout, and changes to the items, still
+            // update at once.
+            let interval: TimeInterval
+            if #available(macOS 27.0, *) {
+                interval = 10
+            } else {
+                interval = 3
+            }
             Publishers.Merge3(
-                // Update every 3 seconds at minimum.
-                Timer.publish(every: 3, on: .main, in: .default).autoconnect().replace(with: ()),
+                // Update every few seconds at minimum.
+                Timer.publish(every: interval, on: .main, in: .default).autoconnect().replace(with: ()),
 
                 // Update when the active space or screen parameters change.
                 Publishers.Merge(
