@@ -355,9 +355,7 @@ final class MenuBarItemImageCache: ObservableObject {
                     newImages[item.tag] = image
                 }
             }
-            await MainActor.run { [newImages] in
-                images.merge(newImages) { (_, new) in new }
-            }
+            await mergeImages(newImages)
             return
         }
 
@@ -386,9 +384,23 @@ final class MenuBarItemImageCache: ObservableObject {
             newImages.merge(sectionImages) { (_, new) in new }
         }
 
-        await MainActor.run { [newImages] in
-            images.merge(newImages) { (_, new) in new }
+        await mergeImages(newImages)
+    }
+
+    /// Adds the given images to the cache, and drops those of items that are no longer
+    /// in the item cache.
+    ///
+    /// Only sections on display are captured, so images are otherwise only ever added,
+    /// and those of every item that ever came and went were kept for good. Items that
+    /// are hidden or off screen stay in the item cache, so their images are kept.
+    @MainActor
+    private func mergeImages(_ newImages: [MenuBarItemTag: CapturedImage]) {
+        var merged = images.merging(newImages) { (_, new) in new }
+        if let items = appState?.itemManager.itemCache.managedItems, !items.isEmpty {
+            let tags = Set(items.map(\.tag))
+            merged = merged.filter { tags.contains($0.key) }
         }
+        images = merged
     }
 
     /// Updates the cache for the given sections, if necessary.
