@@ -411,6 +411,10 @@ private struct ShowItemButton: View {
     let item: MenuBarItem
     let action: () -> Void
 
+    /// Checked when the item changes, rather than on every render, as the
+    /// button is rendered again on every keystroke in the search field.
+    @State private var isItemOnScreen = false
+
     private var backgroundShape: some InsettableShape {
         if #available(macOS 26.0, *) {
             RoundedRectangle(cornerRadius: 5, style: .continuous)
@@ -422,7 +426,7 @@ private struct ShowItemButton: View {
     var body: some View {
         Button(action: action) {
             HStack {
-                Text("\(Bridging.isWindowOnScreen(item.windowID) ? "Click" : "Show") Item")
+                Text("\(isItemOnScreen ? "Click" : "Show") Item")
                     .padding(.leading, 5)
 
                 Image(systemName: "return")
@@ -440,6 +444,9 @@ private struct ShowItemButton: View {
                             .opacity(0.5)
                     }
             }
+        }
+        .onChange(of: item.windowID, initial: true) {
+            isItemOnScreen = Bridging.isWindowOnScreen(item.windowID)
         }
     }
 }
@@ -494,15 +501,11 @@ private struct MenuBarSearchItemView: View {
     private var itemImage: NSImage {
         guard
             let cached = imageCache.images[item.tag],
-            let trimmed = cached.cgImage.trimmingTransparency(around: [.minXEdge, .maxXEdge])
+            let trimmed = model.trimmedImage(for: item.tag, from: cached)
         else {
             return NSImage()
         }
-        let size = CGSize(
-            width: CGFloat(trimmed.width) / cached.scale,
-            height: CGFloat(trimmed.height) / cached.scale
-        )
-        return NSImage(cgImage: trimmed, size: size)
+        return trimmed
     }
 
     private var appIcon: NSImage? {

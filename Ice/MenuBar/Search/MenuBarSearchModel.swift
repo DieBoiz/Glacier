@@ -21,6 +21,10 @@ final class MenuBarSearchModel: ObservableObject {
 
     private var cancellables = Set<AnyCancellable>()
 
+    /// Item images trimmed of their transparent edges, keyed by tag, along
+    /// with the images they were trimmed from.
+    private var trimmedImages = [MenuBarItemTag: (source: CGImage, image: NSImage?)]()
+
     let fuse = Fuse(threshold: 0.5)
 
     func performSetup(with panel: MenuBarSearchPanel) {
@@ -42,7 +46,35 @@ final class MenuBarSearchModel: ObservableObject {
         }
         .store(in: &c)
 
+        // Release the trimmed images while the panel is hidden.
+        panel.publisher(for: \.isVisible)
+            .removeDuplicates()
+            .filter { !$0 }
+            .sink { [weak self] _ in
+                self?.trimmedImages.removeAll()
+            }
+            .store(in: &c)
+
         cancellables = c
+    }
+
+    /// Returns the given cached item image, trimmed of its transparent edges.
+    ///
+    /// Trimming scans the image's pixels, so the result is stored until the
+    /// image for the tag changes, rather than being redone on every render.
+    func trimmedImage(for tag: MenuBarItemTag, from cached: MenuBarItemImageCache.CapturedImage) -> NSImage? {
+        if let entry = trimmedImages[tag], entry.source === cached.cgImage {
+            return entry.image
+        }
+        let image: NSImage? = cached.cgImage.trimmingTransparency(around: [.minXEdge, .maxXEdge]).map { trimmed in
+            let size = CGSize(
+                width: CGFloat(trimmed.width) / cached.scale,
+                height: CGFloat(trimmed.height) / cached.scale
+            )
+            return NSImage(cgImage: trimmed, size: size)
+        }
+        trimmedImages[tag] = (cached.cgImage, image)
+        return image
     }
 
     private func updateAverageColorInfo(for screen: NSScreen) {
