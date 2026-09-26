@@ -104,15 +104,17 @@ final class AdvancedSettings: ObservableObject {
             }
             .store(in: &c)
 
+        // Slider values change continuously while dragging.
         $showOnHoverDelay
-            .receive(on: DispatchQueue.main)
+            .debounce(for: 0.3, scheduler: DispatchQueue.main)
             .sink { delay in
                 Defaults.set(delay, forKey: .showOnHoverDelay)
             }
             .store(in: &c)
 
+        // Slider values change continuously while dragging.
         $tempShowInterval
-            .receive(on: DispatchQueue.main)
+            .debounce(for: 0.3, scheduler: DispatchQueue.main)
             .sink { interval in
                 Defaults.set(interval, forKey: .tempShowInterval)
             }

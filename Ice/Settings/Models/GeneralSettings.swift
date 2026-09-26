@@ -210,8 +210,9 @@ final class GeneralSettings: ObservableObject {
             }
             .store(in: &c)
 
+        // Slider values change continuously while dragging.
         $rehideInterval
-            .receive(on: DispatchQueue.main)
+            .debounce(for: 0.3, scheduler: DispatchQueue.main)
             .sink { interval in
                 Defaults.set(interval, forKey: .rehideInterval)
             }
