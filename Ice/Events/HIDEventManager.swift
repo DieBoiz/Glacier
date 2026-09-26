@@ -64,6 +64,7 @@ final class HIDEventManager: ObservableObject {
                     monitor.stop()
                 }
             }
+            updateMouseMovedTap()
         }
     }
 
@@ -121,7 +122,13 @@ final class HIDEventManager: ObservableObject {
         placement: .tailAppendEventTap,
         option: .listenOnly
     ) { [weak self] _, event in
-        if let self, isEnabled, let appState, let screen = bestScreen(appState: appState) {
+        if
+            let self,
+            isEnabled,
+            let appState,
+            appState.settings.general.showOnHover,
+            let screen = bestScreen(appState: appState)
+        {
             handleShowOnHover(appState: appState, screen: screen, location: MouseHelpers.Location(event: event))
         }
         return event
@@ -159,13 +166,13 @@ final class HIDEventManager: ObservableObject {
 
     // MARK: All Monitors
 
-    /// All monitors maintained by the manager.
+    /// All monitors maintained by the manager, except ``mouseMovedTap``,
+    /// which only runs while show-on-hover is on (see `updateMouseMovedTap(showOnHover:)`).
     private lazy var allMonitors: [any EventMonitorProtocol] = {
         var monitors: [any EventMonitorProtocol] = [
             mouseDownMonitor,
             mouseUpMonitor,
             mouseDraggedMonitor,
-            mouseMovedTap,
             scrollWheelMonitor,
         ]
         if #available(macOS 27.0, *) {
@@ -186,6 +193,13 @@ final class HIDEventManager: ObservableObject {
     /// Configures the internal observers for the manager.
     private func configureCancellables() {
         var c = Set<AnyCancellable>()
+
+        appState?.settings.general.$showOnHover
+            .removeDuplicates()
+            .sink { [weak self] showOnHover in
+                self?.updateMouseMovedTap(showOnHover: showOnHover)
+            }
+            .store(in: &c)
 
         if let appState, let hiddenSection = appState.menuBarManager.section(withName: .hidden) {
             // In fullscreen mode, the menu bar slides down from the top on hover. Observe the
@@ -229,6 +243,19 @@ final class HIDEventManager: ObservableObject {
     }
 
     // MARK: Start/Stop
+
+    /// Enables the mouse moved tap while the manager is enabled and show-on-hover
+    /// is on, and disables it otherwise.
+    ///
+    /// Every mouse move in the system goes through the tap, so it is not left
+    /// running for a feature that is off.
+    private func updateMouseMovedTap(showOnHover: Bool? = nil) {
+        if isEnabled, showOnHover ?? appState?.settings.general.showOnHover ?? false {
+            mouseMovedTap.enable()
+        } else {
+            mouseMovedTap.disable()
+        }
+    }
 
     /// Starts all monitors.
     func startAll() {
