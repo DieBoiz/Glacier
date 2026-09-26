@@ -82,25 +82,41 @@ final class IceBarColorManager: ObservableObject {
                 DistributedNotificationCenter.default()
                     .publisher(for: DistributedNotificationCenter.interfaceThemeChangedNotification)
                     .replace(with: ()),
-                Timer.publish(every: 5, on: .main, in: .default)
-                    .autoconnect()
-                    .replace(with: ())
+                // Only poll while the panel is visible. Showing the panel
+                // updates the color anyway.
+                iceBarPanel.publisher(for: \.isVisible)
+                    .removeDuplicates()
+                    .map { isVisible in
+                        if isVisible {
+                            Timer.publish(every: 5, on: .main, in: .default)
+                                .autoconnect()
+                                .replace(with: ())
+                                .eraseToAnyPublisher()
+                        } else {
+                            Empty<Void, Never>().eraseToAnyPublisher()
+                        }
+                    }
+                    .switchToLatest()
             )
             .receive(on: DispatchQueue.main)
             .sink { [weak self, weak iceBarPanel] in
                 guard
                     let self,
                     let iceBarPanel,
+                    iceBarPanel.isVisible,
                     let screen = iceBarPanel.screen,
                     screen == .main
                 else {
                     return
                 }
+                if #available(macOS 27.0, *) {
+                    // The color is flat on macOS 27, but follows the system appearance.
+                    setColor27()
+                    return
+                }
                 updateWindowImage(for: screen)
-                if iceBarPanel.isVisible {
-                    withAnimation {
-                        self.updateColorInfo(with: iceBarPanel.frame, screen: screen)
-                    }
+                withAnimation {
+                    self.updateColorInfo(with: iceBarPanel.frame, screen: screen)
                 }
             }
             .store(in: &c)
@@ -110,6 +126,12 @@ final class IceBarColorManager: ObservableObject {
     }
 
     private func updateWindowImage(for screen: NSScreen) {
+        if #available(macOS 27.0, *) {
+            // The menu bar window cannot be captured on macOS 27, and the
+            // color is flat there anyway (see ``setColor27()``).
+            return
+        }
+
         let windows = WindowInfo.createWindows(option: .onScreen)
         let displayID = screen.displayID
 
