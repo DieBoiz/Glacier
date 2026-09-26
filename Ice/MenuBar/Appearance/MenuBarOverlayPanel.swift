@@ -148,29 +148,23 @@ final class MenuBarOverlayPanel: NSPanel {
             guard let self else {
                 return
             }
-            updateTaskContext.setTask(for: .applicationMenuFrame, timeout: .seconds(10)) {
-                var hasDoneInitialUpdate = false
-                while true {
-                    try Task.checkCancellation()
-                    guard
-                        let latestFrame = self.owningScreen.getApplicationMenuFrame(),
-                        latestFrame != self.applicationMenuFrame
-                    else {
-                        if hasDoneInitialUpdate {
-                            try await Task.sleep(for: .seconds(1))
-                        } else {
-                            try await Task.sleep(for: .milliseconds(1))
-                        }
-                        continue
-                    }
-                    self.insertUpdateFlag(.applicationMenuFrame)
-                    hasDoneInitialUpdate = true
-                }
+            // Only the main screen's application menu changes. `NSScreen.main`
+            // can lag behind the switch, so check it again shortly after.
+            let isMainScreen = owningScreen == NSScreen.main
+            if isMainScreen {
+                startApplicationMenuFrameTask()
+            } else {
+                updateTaskContext.cancelTask(for: .applicationMenuFrame)
             }
-            Task {
+            Task { [weak self] in
                 try? await Task.sleep(for: .milliseconds(100))
-                if self.owningScreen != NSScreen.main {
-                    self.updateTaskContext.cancelTask(for: .applicationMenuFrame)
+                guard let self, (owningScreen == NSScreen.main) != isMainScreen else {
+                    return
+                }
+                if isMainScreen {
+                    updateTaskContext.cancelTask(for: .applicationMenuFrame)
+                } else {
+                    startApplicationMenuFrameTask()
                 }
             }
         }
@@ -250,6 +244,43 @@ final class MenuBarOverlayPanel: NSPanel {
     /// Inserts the given update flag into the panel's current list of update flags.
     private func insertUpdateFlag(_ flag: UpdateFlag) {
         updateFlags.insert(flag)
+    }
+
+    /// Starts a task that watches the application menu frame for changes
+    /// while the newly active app sets up its menus.
+    private func startApplicationMenuFrameTask() {
+        updateTaskContext.setTask(for: .applicationMenuFrame, timeout: .seconds(10)) { [weak self] in
+            var hasDoneInitialUpdate = false
+            var pollInterval = Duration.milliseconds(16)
+            while true {
+                try Task.checkCancellation()
+                guard let self else {
+                    return
+                }
+                let previousFrame = self.applicationMenuFrame
+                guard
+                    let latestFrame = self.owningScreen.getApplicationMenuFrame(),
+                    latestFrame != previousFrame
+                else {
+                    if hasDoneInitialUpdate {
+                        try await Task.sleep(for: .seconds(1))
+                    } else {
+                        try await Task.sleep(for: pollInterval)
+                        pollInterval = min(pollInterval * 2, .milliseconds(250))
+                    }
+                    continue
+                }
+                self.insertUpdateFlag(.applicationMenuFrame)
+                hasDoneInitialUpdate = true
+                try await Task.sleep(for: .milliseconds(50))
+                // If the frame wasn't stored, the update was rejected (e.g. the
+                // space is fullscreen or the menu bar is hidden). Retrying would
+                // just spin, so stop until the next trigger.
+                if self.applicationMenuFrame == previousFrame {
+                    return
+                }
+            }
+        }
     }
 
     /// Performs validation for the given validation kind. Returns the panel's
