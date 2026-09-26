@@ -52,9 +52,28 @@ final class MenuBarItemManager: ObservableObject {
     private func configureCancellables(with appState: AppState) {
         var c = Set<AnyCancellable>()
 
-        NSWorkspace.shared.publisher(for: \.runningApplications)
-            .delay(for: 0.25, scheduler: DispatchQueue.main)
-            .discardMerge(Timer.publish(every: 5, on: .main, in: .default).autoconnect())
+        let runningApplications = NSWorkspace.shared.publisher(for: \.runningApplications).replace(with: ())
+        let applicationChanges: AnyPublisher<Void, Never>
+        let sweepInterval: TimeInterval
+        if #available(macOS 27.0, *) {
+            // Reading the items on macOS 27 asks every running process through Accessibility,
+            // which can take seconds, so the periodic sweep is only a safety net. Changes come
+            // from the launches and quits that add and remove items instead, read again a few
+            // seconds later for an application that adds its item only once it has started.
+            applicationChanges = runningApplications
+                .delay(for: 0.25, scheduler: DispatchQueue.main)
+                .merge(with: runningApplications.delay(for: 5, scheduler: DispatchQueue.main))
+                .eraseToAnyPublisher()
+            sweepInterval = 30
+        } else {
+            applicationChanges = runningApplications
+                .delay(for: 0.25, scheduler: DispatchQueue.main)
+                .eraseToAnyPublisher()
+            sweepInterval = 5
+        }
+
+        applicationChanges
+            .discardMerge(Timer.publish(every: sweepInterval, on: .main, in: .default).autoconnect())
             .debounce(for: 1, scheduler: DispatchQueue.main)
             .sink { [weak self] in
                 guard let self else {
@@ -358,6 +377,15 @@ extension MenuBarItemManager {
     /// the hidden and always-hidden sections are correctly ordered,
     /// arranging them into valid positions if needed.
     func cacheItemsRegardless(_ currentItemWindowIDs: [CGWindowID]? = nil) async {
+        await cacheItemsRegardless(currentItemWindowIDs, readItems: nil)
+    }
+
+    /// Caches the given menu bar items, or the current ones if `nil`, regardless of
+    /// whether the items have changed since the previous cache.
+    ///
+    /// On macOS 27 a read asks every running process through Accessibility, so a caller
+    /// that has just read the items passes them in rather than having them read twice.
+    private func cacheItemsRegardless(_ currentItemWindowIDs: [CGWindowID]?, readItems: [MenuBarItem]?) async {
         await cacheActor.runCacheTask { [weak self] in
             guard let self else {
                 return
@@ -369,7 +397,12 @@ extension MenuBarItemManager {
             }
 
             let displayID = Bridging.getActiveMenuBarDisplayID()
-            var items = await MenuBarItem.getMenuBarItems(option: .activeSpace)
+            var items: [MenuBarItem]
+            if let readItems {
+                items = readItems
+            } else {
+                items = await MenuBarItem.getMenuBarItems(option: .activeSpace)
+            }
 
             let itemWindowIDs = currentItemWindowIDs ?? items.reversed().map { $0.windowID }
             await cacheActor.updateCachedItemWindowIDs(itemWindowIDs)
@@ -422,7 +455,7 @@ extension MenuBarItemManager {
             let items = await MenuBarItem.getMenuBarItems(option: .activeSpace)
             let signature = items.map { $0.windowID &+ UInt32(truncatingIfNeeded: Int($0.bounds.minX)) }
             if await cacheActor.cachedItemWindowIDs != signature {
-                await cacheItemsRegardless(signature)
+                await cacheItemsRegardless(signature, readItems: items)
             }
             return
         }
