@@ -1054,13 +1054,18 @@ extension MenuBarItemManager {
         defer {
             MouseHelpers.showCursor()
         }
+        // Already detached, so the bounds are read here rather than through a detached task
+        // per check, and a short pause between checks keeps the loop from spinning a core.
         let responseTask = Task.detached {
             while true {
                 try Task.checkCancellation()
-                let origin = try await self.getCurrentBounds(for: item).origin
-                if origin != initialOrigin {
-                    return origin
+                guard let bounds = Bridging.getWindowBounds(for: item.windowID) else {
+                    throw EventError.missingItemBounds(item)
                 }
+                if bounds.origin != initialOrigin {
+                    return bounds.origin
+                }
+                try await Task.sleep(for: .milliseconds(5))
             }
         }
         let timeoutTask = Task(timeout: timeout) {
