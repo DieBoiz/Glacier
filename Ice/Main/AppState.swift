@@ -246,17 +246,20 @@ final class AppState: ObservableObject {
 
     /// Returns a publisher for the window with the given identifier.
     func publisherForWindow(_ id: IceWindowIdentifier) -> some Publisher<NSWindow?, Never> {
-        NSApp.publisher(for: \.windows).mergeMap { window in
-            window.publisher(for: \.identifier)
-                .map { [weak window] identifier in
-                    guard identifier?.rawValue == id.rawValue else {
-                        return nil
+        // SwiftUI can assign the identifier after adding the window to
+        // the app, so observe the identifiers of the current windows too.
+        // Switching to the latest set cancels the observers of the old one.
+        NSApp.publisher(for: \.windows)
+            .map { windows in
+                Publishers.MergeMany(windows.map { $0.publisher(for: \.identifier, options: []) })
+                    .replace(with: ())
+                    .prepend(())
+                    .map {
+                        windows.first { $0.identifier?.rawValue == id.rawValue }
                     }
-                    return window
-                }
-                .first { $0 != nil }
-                .replaceEmpty(with: nil)
-        }
+            }
+            .switchToLatest()
+            .removeDuplicates { $0 === $1 }
     }
 
     /// Opens the window with the given identifier.
