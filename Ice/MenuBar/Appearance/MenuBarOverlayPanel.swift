@@ -416,6 +416,10 @@ private final class MenuBarOverlayPanelContentView: NSView {
 
     private var cancellables = Set<AnyCancellable>()
 
+    /// The total width of the menu bar items on the owning screen, measured
+    /// outside of drawing. Only used by the split shape.
+    private var trailingItemsWidth: CGFloat?
+
     /// The overlay panel that contains the content view.
     private var overlayPanel: MenuBarOverlayPanel? {
         window as? MenuBarOverlayPanel
@@ -456,33 +460,33 @@ private final class MenuBarOverlayPanelContentView: NSView {
                     }
                     .store(in: &c)
 
-                if #available(macOS 27.0, *) {
-                    // Ice's control items stay collapsed on macOS 27, so their frames never
-                    // change. Redraw whenever the items are read again instead.
-                    appState.itemManager.$itemCache
-                        .receive(on: DispatchQueue.main)
-                        .sink { [weak self] _ in
-                            self?.needsDisplay = true
-                        }
-                        .store(in: &c)
+                // Only the split shape depends on the positions of the menu bar items.
+                // Measure them and redraw whenever they might have moved.
+                //
+                // - NOTE: A previous attempt was made to redraw the view when the
+                //   section's `isHidden` property was changed. This would be semantically
+                //   ideal, but the property sometimes changes before the menu bar items
+                //   are actually updated on-screen. Since the view's drawing process relies
+                //   on getting an accurate position of each menu bar item, we need to use
+                //   something that publishes its changes only after the items are updated.
+                //   Ice's control items stay collapsed on macOS 27, so their frames never
+                //   change there. The item cache publishes whenever the items are read.
+                var itemChanges = appState.menuBarManager.sections.map { section in
+                    section.controlItem.$onScreenFrame.replace(with: ()).eraseToAnyPublisher()
                 }
+                itemChanges.append(appState.itemManager.$itemCache.replace(with: ()).eraseToAnyPublisher())
+                itemChanges.append($fullConfiguration.map(\.shapeKind).removeDuplicates().replace(with: ()).eraseToAnyPublisher())
 
-                for section in appState.menuBarManager.sections {
-                    // Redraw whenever the window frame of a control item changes.
-                    //
-                    // - NOTE: A previous attempt was made to redraw the view when the
-                    //   section's `isHidden` property was changed. This would be semantically
-                    //   ideal, but the property sometimes changes before the menu bar items
-                    //   are actually updated on-screen. Since the view's drawing process relies
-                    //   on getting an accurate position of each menu bar item, we need to use
-                    //   something that publishes its changes only after the items are updated.
-                    section.controlItem.$onScreenFrame
-                        .receive(on: DispatchQueue.main)
-                        .sink { [weak self] _ in
-                            self?.needsDisplay = true
+                Publishers.MergeMany(itemChanges)
+                    .receive(on: DispatchQueue.main)
+                    .sink { [weak self] in
+                        guard let self, fullConfiguration.shapeKind == .split else {
+                            return
                         }
-                        .store(in: &c)
-                }
+                        updateTrailingItemsWidth()
+                        needsDisplay = true
+                    }
+                    .store(in: &c)
             }
 
             // Redraw whenever the application menu frame changes.
@@ -508,6 +512,26 @@ private final class MenuBarOverlayPanelContentView: NSView {
             .store(in: &c)
 
         cancellables = c
+    }
+
+    /// Measures the total width of the menu bar items on the owning screen.
+    private func updateTrailingItemsWidth() {
+        guard let screen = overlayPanel?.owningScreen else {
+            trailingItemsWidth = nil
+            return
+        }
+        if #available(macOS 27.0, *) {
+            // Items are no longer windows on macOS 27; they run from the leftmost
+            // drawn item to the edge of the display.
+            trailingItemsWidth = MenuBarItemProvider27.leftEdge(for: screen.displayID).map { leftEdge in
+                CGDisplayBounds(screen.displayID).maxX - leftEdge
+            }
+        } else {
+            let itemWindows = MenuBarItem.getMenuBarItemWindows(on: screen.displayID, option: .onScreen)
+            trailingItemsWidth = itemWindows.isEmpty ? nil : itemWindows.reduce(into: 0) { width, item in
+                width += item.bounds.width
+            }
+        }
     }
 
     /// Returns a path in the given rectangle, with the given end caps,
@@ -622,22 +646,8 @@ private final class MenuBarOverlayPanelContentView: NSView {
             return CGRect(x: rect.minX, y: rect.minY, width: maxX, height: rect.height)
         }()
         let trailingPathBounds: CGRect = {
-            let totalWidth: CGFloat
-            if #available(macOS 27.0, *) {
-                // Items are no longer windows on macOS 27; they run from the leftmost
-                // drawn item to the edge of the display.
-                guard let leftEdge = MenuBarItemProvider27.leftEdge(for: screen.displayID) else {
-                    return .zero
-                }
-                totalWidth = CGDisplayBounds(screen.displayID).maxX - leftEdge
-            } else {
-                let itemWindows = MenuBarItem.getMenuBarItemWindows(on: screen.displayID, option: .onScreen)
-                guard !itemWindows.isEmpty else {
-                    return .zero
-                }
-                totalWidth = itemWindows.reduce(into: 0) { width, item in
-                    width += item.bounds.width
-                }
+            guard let totalWidth = trailingItemsWidth else {
+                return .zero
             }
             var position = rect.maxX - totalWidth
             if shouldInset {
@@ -817,24 +827,8 @@ private final class MenuBarOverlayPanelContentView: NSView {
                     context.restoreGraphicsState()
                 }
 
-                let borderPath = switch fullConfiguration.shapeKind {
-                case .noShape:
-                    NSBezierPath(rect: drawableBounds)
-                case .full:
-                    pathForFullShape(
-                        in: drawableBounds,
-                        info: fullConfiguration.fullShapeInfo,
-                        isInset: fullConfiguration.isInset,
-                        screen: overlayPanel.owningScreen
-                    )
-                case .split:
-                    pathForSplitShape(
-                        in: drawableBounds,
-                        info: fullConfiguration.splitShapeInfo,
-                        isInset: fullConfiguration.isInset,
-                        screen: overlayPanel.owningScreen
-                    )
-                }
+                // The shape path is no longer needed for anything else, so reuse it.
+                let borderPath = shapePath
 
                 // HACK: Insetting a path to get an "inside" stroke is surprisingly
                 // difficult. We can fake the correct line width by doubling it, as
