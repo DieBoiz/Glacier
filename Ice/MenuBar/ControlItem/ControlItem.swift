@@ -216,8 +216,11 @@ final class ControlItem {
             }
             .store(in: &c)
 
+        // Use `switchToLatest()` rather than `flatMap`, which would keep observing
+        // (and retaining) every previous button, window, and screen.
         statusItem.publisher(for: \.button).removeNil()
-            .flatMap { $0.publisher(for: \.window) }
+            .map { $0.publisher(for: \.window) }
+            .switchToLatest()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] window in
                 self?.window = window
@@ -225,7 +228,8 @@ final class ControlItem {
             .store(in: &c)
 
         $window.removeNil()
-            .flatMap { $0.publisher(for: \.frame) }
+            .map { $0.publisher(for: \.frame) }
+            .switchToLatest()
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] frame in
@@ -234,7 +238,8 @@ final class ControlItem {
             .store(in: &c)
 
         $window.removeNil()
-            .flatMap { $0.publisher(for: \.screen) }
+            .map { $0.publisher(for: \.screen) }
+            .switchToLatest()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] screen in
                 self?.screen = screen
@@ -242,7 +247,8 @@ final class ControlItem {
             .store(in: &c)
 
         $screen.removeNil()
-            .flatMap { $0.publisher(for: \.frame) }
+            .map { $0.publisher(for: \.frame) }
+            .switchToLatest()
             .combineLatest($frame.removeNil())
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
