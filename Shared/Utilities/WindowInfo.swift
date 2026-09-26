@@ -164,7 +164,10 @@ extension WindowInfo: Equatable {
     static func == (lhs: WindowInfo, rhs: WindowInfo) -> Bool {
         lhs.windowID == rhs.windowID &&
         lhs.ownerPID == rhs.ownerPID &&
-        NSStringFromRect(lhs.bounds) == NSStringFromRect(rhs.bounds) &&
+        lhs.bounds.origin.x == rhs.bounds.origin.x &&
+        lhs.bounds.origin.y == rhs.bounds.origin.y &&
+        lhs.bounds.size.width == rhs.bounds.size.width &&
+        lhs.bounds.size.height == rhs.bounds.size.height &&
         lhs.layer == rhs.layer &&
         lhs.title == rhs.title &&
         lhs.ownerName == rhs.ownerName &&
@@ -177,7 +180,10 @@ extension WindowInfo: Hashable {
     func hash(into hasher: inout Hasher) {
         hasher.combine(windowID)
         hasher.combine(ownerPID)
-        hasher.combine(NSStringFromRect(bounds))
+        hasher.combine(bounds.origin.x)
+        hasher.combine(bounds.origin.y)
+        hasher.combine(bounds.size.width)
+        hasher.combine(bounds.size.height)
         hasher.combine(layer)
         hasher.combine(title)
         hasher.combine(ownerName)
