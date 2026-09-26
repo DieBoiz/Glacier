@@ -30,6 +30,17 @@ final class SourcePIDCache {
     /// timeout of 6 seconds.
     private static let messagingTimeout: Float = 1
 
+    /// The interval, in seconds, before the cache looks again for the
+    /// extras menu bar of an app that didn't have one.
+    ///
+    /// Most apps don't have an extras menu bar, and looking for one
+    /// calls into the app, so the cache doesn't look on every request.
+    private static let extrasMenuBarRetryInterval: TimeInterval = 10
+
+    /// The interval, in seconds, before the cache looks again for the
+    /// source process of a window that it couldn't find.
+    private static let windowRetryInterval: TimeInterval = 2
+
     /// An object that contains a running application and provides an
     /// interface to access relevant information, such as its process
     /// identifier and extras menu bar.
@@ -38,8 +49,15 @@ final class SourcePIDCache {
     /// object guards its mutable state with a lock, which it never holds
     /// while calling into another app.
     private final class CachedApplication {
+        /// The app's extras menu bar, or the date after which to look
+        /// for it again.
+        private struct ExtrasMenuBarState {
+            var bar: UIElement?
+            var retryDate: Date?
+        }
+
         private let runningApp: NSRunningApplication
-        private let extrasMenuBar = OSAllocatedUnfairLock<UIElement?>(uncheckedState: nil)
+        private let extrasMenuBar = OSAllocatedUnfairLock(uncheckedState: ExtrasMenuBarState())
 
         /// The app's process identifier.
         var processIdentifier: pid_t {
@@ -49,7 +67,7 @@ final class SourcePIDCache {
         /// A Boolean value indicating whether the app's extras menu
         /// bar has been successfully created and stored.
         var hasExtrasMenuBar: Bool {
-            extrasMenuBar.withLockUnchecked { $0 != nil }
+            extrasMenuBar.withLockUnchecked { $0.bar != nil }
         }
 
         /// A Boolean value indicating whether the app is in a valid
@@ -73,11 +91,35 @@ final class SourcePIDCache {
         /// menu bar, creating it if necessary.
         ///
         /// When the element is first created, it gets stored for efficient
-        /// access on subsequent calls.
-        func getOrCreateExtrasMenuBar() -> UIElement? {
-            if let bar = extrasMenuBar.withLockUnchecked({ $0 }) {
+        /// access on subsequent calls. When creating it fails, the app isn't
+        /// asked again until ``extrasMenuBarRetryInterval`` has passed.
+        ///
+        /// - Parameter ignoringRetryDelay: If `true`, looks for the extras
+        ///   menu bar even if a recent attempt failed.
+        func getOrCreateExtrasMenuBar(ignoringRetryDelay: Bool) -> UIElement? {
+            let state = extrasMenuBar.withLockUnchecked { $0 }
+            if let bar = state.bar {
                 return bar
             }
+            if !ignoringRetryDelay, let retryDate = state.retryDate, retryDate > .now {
+                return nil
+            }
+            guard let bar = createExtrasMenuBar() else {
+                extrasMenuBar.withLockUnchecked { state in
+                    state.retryDate = .now.addingTimeInterval(extrasMenuBarRetryInterval)
+                }
+                return nil
+            }
+            extrasMenuBar.withLockUnchecked { state in
+                state.bar = bar
+                state.retryDate = nil
+            }
+            return bar
+        }
+
+        /// Creates the accessibility element representing the app's
+        /// extras menu bar.
+        private func createExtrasMenuBar() -> UIElement? {
             guard
                 isValidForAccessibility,
                 let app = AXHelpers.application(for: runningApp)
@@ -89,7 +131,6 @@ final class SourcePIDCache {
                 return nil
             }
             AXUIElementSetMessagingTimeout(bar.element, messagingTimeout)
-            extrasMenuBar.withLockUnchecked { $0 = bar }
             return bar
         }
     }
@@ -98,6 +139,7 @@ final class SourcePIDCache {
     private struct State {
         var apps = [CachedApplication]()
         var pids = [CGWindowID: pid_t]()
+        var retryDates = [CGWindowID: Date]()
     }
 
     /// Returns the latest bounds of the given window after ensuring
@@ -125,25 +167,28 @@ final class SourcePIDCache {
         return nil
     }
 
-    /// Finds the process identifier for the given window by searching
-    /// the extras menu bars of the given apps.
+    /// Finds the process identifier for the window with the given bounds
+    /// by searching the extras menu bars of the given apps.
     ///
     /// This method blocks while it calls into other apps, so it must not
     /// be called while holding the lock for the cache's state.
-    private static func findPID(for window: WindowInfo, in apps: [CachedApplication]) -> pid_t? {
-        guard
-            AXHelpers.isProcessTrusted(),
-            let windowBounds = stableBounds(for: window)
-        else {
-            return nil
-        }
-
+    ///
+    /// - Parameters:
+    ///   - windowBounds: The stable bounds of the window.
+    ///   - apps: The apps to search.
+    ///   - ignoringRetryDelay: If `true`, also searches apps that recently
+    ///     failed to provide an extras menu bar.
+    private static func findPID(
+        forWindowBounds windowBounds: CGRect,
+        in apps: [CachedApplication],
+        ignoringRetryDelay: Bool
+    ) -> pid_t? {
         // Search the apps that are confirmed to have an extras menu
         // bar first.
         let apps = apps.filter { $0.hasExtrasMenuBar } + apps.filter { !$0.hasExtrasMenuBar }
 
         for app in apps {
-            guard let bar = app.getOrCreateExtrasMenuBar() else {
+            guard let bar = app.getOrCreateExtrasMenuBar(ignoringRetryDelay: ignoringRetryDelay) else {
                 continue
             }
             for child in AXHelpers.children(for: bar) {
@@ -229,17 +274,35 @@ final class SourcePIDCache {
         // Snapshot the state and search outside the lock, so that a slow
         // app doesn't hold up other requests or the observer for running
         // applications.
-        let (cachedPID, apps) = state.withLockUnchecked { state in
-            (state.pids[window.windowID], state.apps)
+        let (cachedPID, retryDate, apps) = state.withLockUnchecked { state in
+            (state.pids[window.windowID], state.retryDates[window.windowID], state.apps)
         }
         if let cachedPID {
             return cachedPID
         }
-        guard let pid = Self.findPID(for: window, in: apps) else {
+        if let retryDate, retryDate > .now {
             return nil
         }
+        guard
+            AXHelpers.isProcessTrusted(),
+            let windowBounds = Self.stableBounds(for: window)
+        else {
+            return nil
+        }
+        // The first search for a window also asks the apps that recently
+        // had no extras menu bar, as the window may be their first item.
+        let pid = Self.findPID(
+            forWindowBounds: windowBounds,
+            in: apps,
+            ignoringRetryDelay: retryDate == nil
+        )
         state.withLockUnchecked { state in
-            state.pids[window.windowID] = pid
+            if let pid {
+                state.pids[window.windowID] = pid
+                state.retryDates[window.windowID] = nil
+            } else {
+                state.retryDates[window.windowID] = .now.addingTimeInterval(Self.windowRetryInterval)
+            }
         }
         return pid
     }
