@@ -218,6 +218,18 @@ final class GeneralSettings: ObservableObject {
             }
             .store(in: &c)
 
+        // Save the latest slider value in case the app terminates before
+        // the debounce interval elapses.
+        NotificationCenter.default
+            .publisher(for: NSApplication.willTerminateNotification)
+            .sink { [weak self] _ in
+                guard let self else {
+                    return
+                }
+                Defaults.set(rehideInterval, forKey: .rehideInterval)
+            }
+            .store(in: &c)
+
         cancellables = c
     }
 }

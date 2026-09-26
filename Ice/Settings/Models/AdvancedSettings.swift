@@ -120,6 +120,19 @@ final class AdvancedSettings: ObservableObject {
             }
             .store(in: &c)
 
+        // Save the latest slider values in case the app terminates before
+        // the debounce interval elapses.
+        NotificationCenter.default
+            .publisher(for: NSApplication.willTerminateNotification)
+            .sink { [weak self] _ in
+                guard let self else {
+                    return
+                }
+                Defaults.set(showOnHoverDelay, forKey: .showOnHoverDelay)
+                Defaults.set(tempShowInterval, forKey: .tempShowInterval)
+            }
+            .store(in: &c)
+
         cancellables = c
     }
 }
