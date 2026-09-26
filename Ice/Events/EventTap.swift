@@ -53,7 +53,10 @@ final class EventTap {
                 tap.enable()
                 return nil
             }
-            guard tap.isEnabled else {
+            // A stored flag rather than `isEnabled`, which asks the window server on
+            // every event. It still keeps a tap that was just disabled from its callback
+            // from handling anything that was already on its way.
+            guard tap.isListening else {
                 return Unmanaged.passUnretained(event)
             }
             return tap.callback(tap, event).map { eventFromCallback in
@@ -66,6 +69,10 @@ final class EventTap {
     private var source: CFRunLoopSource?
     private let runLoop: CFRunLoop
     private let callback: (EventTap, CGEvent) -> CGEvent?
+
+    /// A Boolean value that indicates whether the tap was enabled with
+    /// ``enable()`` and not since disabled.
+    private var isListening = false
 
     /// A string label that identifies the tap.
     let label: String
@@ -235,6 +242,7 @@ final class EventTap {
     /// Enables the tap.
     func enable() {
         guard let source, let machPort else { return }
+        isListening = true
         CGEvent.tapEnable(tap: machPort, enable: true)
         CFRunLoopAddSource(runLoop, source, .commonModes)
     }
@@ -242,6 +250,7 @@ final class EventTap {
     /// Disables the tap.
     func disable() {
         guard let source, let machPort else { return }
+        isListening = false
         CFRunLoopRemoveSource(runLoop, source, .commonModes)
         CGEvent.tapEnable(tap: machPort, enable: false)
     }
