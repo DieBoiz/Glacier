@@ -33,6 +33,14 @@ final class HIDEventManager: ObservableObject {
     /// swallowing an unrelated one later.
     private var heldBackReleaseUntil: ContinuousClock.Instant?
 
+    /// The application menu frame last read through Accessibility, with the display and
+    /// the menu bar's owner it was read for (see `applicationMenuFrame(for:)`).
+    private var applicationMenuFrameCache: (
+        displayID: CGDirectDisplayID,
+        ownerPID: pid_t?,
+        frame: CGRect?,
+        readAt: ContinuousClock.Instant
+    )?
 
 
     /// A Boolean value that indicates whether the manager is enabled.
@@ -189,7 +197,24 @@ final class HIDEventManager: ObservableObject {
                 }
             }
             .store(in: &c)
+
+            // The application menu belongs to the frontmost app, and differs between spaces.
+            appState.$activeSpace
+                .sink { [weak self] _ in
+                    self?.applicationMenuFrameCache = nil
+                }
+                .store(in: &c)
         }
+
+        NSWorkspace.shared.notificationCenter
+            .publisher(for: NSWorkspace.didActivateApplicationNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.applicationMenuFrameCache = nil
+                }
+            }
+            .store(in: &c)
 
         cancellables = c
     }
@@ -773,13 +798,34 @@ extension HIDEventManager {
     ) -> Bool {
         guard
             let mouseLocation = location?.coreGraphics,
-            var applicationMenuFrame = screen.getApplicationMenuFrame()
+            var applicationMenuFrame = applicationMenuFrame(for: screen)
         else {
             return false
         }
         applicationMenuFrame.size.width += applicationMenuFrame.origin.x - screen.frame.origin.x
         applicationMenuFrame.origin.x = screen.frame.origin.x
         return applicationMenuFrame.contains(mouseLocation)
+    }
+
+    /// Returns the frame of the application menu on the given screen.
+    ///
+    /// Reading the frame takes a round of Accessibility messages to the frontmost app for
+    /// each of its menus, and the hit tests run on every mouse move in the menu bar, so the
+    /// frame is reused for the same display and menu bar owner for a short while. It is
+    /// read again when another app activates or the space changes.
+    private func applicationMenuFrame(for screen: NSScreen) -> CGRect? {
+        let ownerPID = NSWorkspace.shared.menuBarOwningApplication?.processIdentifier
+        if
+            let cache = applicationMenuFrameCache,
+            cache.displayID == screen.displayID,
+            cache.ownerPID == ownerPID,
+            ContinuousClock.now < cache.readAt + .seconds(1)
+        {
+            return cache.frame
+        }
+        let frame = screen.getApplicationMenuFrame()
+        applicationMenuFrameCache = (screen.displayID, ownerPID, frame, .now)
+        return frame
     }
 
     /// A Boolean value that indicates whether the mouse pointer is within
@@ -847,10 +893,12 @@ extension HIDEventManager {
             return false
         }
         guard
+            // Cheapest first: the application menu asks the frontmost app through
+            // Accessibility, so it comes last.
             isMouseInsideMenuBar(appState: appState, screen: screen, location: location),
-            !isMouseInsideApplicationMenu(appState: appState, screen: screen, location: location),
+            !isMouseInsideNotch(appState: appState, screen: screen, location: location),
             !isMouseInsideMenuBarItem(appState: appState, screen: screen, location: location),
-            !isMouseInsideNotch(appState: appState, screen: screen, location: location)
+            !isMouseInsideApplicationMenu(appState: appState, screen: screen, location: location)
         else {
             return false
         }
