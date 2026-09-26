@@ -92,7 +92,9 @@ final class MenuBarAppearanceManager: ObservableObject {
                 }
                 // The overlay panels may not have been configured yet. Since some of the
                 // properties on the manager might call for them, try to configure now.
-                if overlayPanels.isEmpty {
+                // If they are no longer called for, close them, so they stop their
+                // timers, monitors, and wallpaper captures.
+                if overlayPanels.isEmpty == needsOverlayPanels(for: configuration) {
                     configureOverlayPanels(with: configuration)
                 }
             }
