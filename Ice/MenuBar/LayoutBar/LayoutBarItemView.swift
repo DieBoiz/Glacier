@@ -100,12 +100,14 @@ final class LayoutBarItemView: NSView {
         var c = Set<AnyCancellable>()
 
         if let appState {
+            // Only resize and redraw when this item's image actually changes.
             appState.imageCache.$images
-                .sink { [weak self] images in
-                    guard let self, let cachedImage = images[item.tag] else {
-                        return
-                    }
-                    self.cachedImage = cachedImage
+                .compactMap { [tag = item.tag] images in
+                    images[tag]
+                }
+                .removeDuplicates { $0.cgImage === $1.cgImage && $0.scale == $1.scale }
+                .sink { [weak self] cachedImage in
+                    self?.cachedImage = cachedImage
                 }
                 .store(in: &c)
         }
