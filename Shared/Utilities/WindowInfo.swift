@@ -122,10 +122,11 @@ extension WindowInfo {
         let displayBounds = CGDisplayBounds(display)
         return windows.first { window in
             // Wallpaper window belongs to the Dock process, or to WindowManager
-            // on macOS 27 (measured on macOS 27.0).
-            ["com.apple.dock", "com.apple.WindowManager"].contains(window.owningApplication?.bundleIdentifier) &&
+            // on macOS 27 (measured on macOS 27.0). Looking up the owning
+            // application costs the most, so it is checked last.
             window.title?.hasPrefix("Wallpaper") == true &&
-            displayBounds.contains(window.bounds)
+            displayBounds.contains(window.bounds) &&
+            ["com.apple.dock", "com.apple.WindowManager"].contains(window.owningApplication?.bundleIdentifier)
         }
     }
 
