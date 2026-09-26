@@ -94,6 +94,12 @@ final class MenuBarItemImageCache: ObservableObject {
     /// Storage for internal observers.
     private var cancellables = Set<AnyCancellable>()
 
+    /// The update started by the observers, while it runs.
+    @MainActor private var updateTask: Task<Void, Never>?
+
+    /// Whether the observers asked for an update while one was running.
+    @MainActor private var needsAnotherUpdate = false
+
     // MARK: Setup
 
     /// Sets up the cache.
@@ -138,17 +144,36 @@ final class MenuBarItemImageCache: ObservableObject {
             )
             .throttle(for: 0.5, scheduler: DispatchQueue.main, latest: false)
             .sink { [weak self] in
-                guard let self else {
-                    return
-                }
-                Task {
-                    await self.updateCache()
-                }
+                self?.scheduleUpdate()
             }
             .store(in: &c)
         }
 
         cancellables = c
+    }
+
+    /// Updates the cache, unless an update is already under way, in which case one more
+    /// follows it.
+    ///
+    /// A capture can block for good (see ``captureQueue``), and a task per tick behind it
+    /// piled up without end.
+    @MainActor
+    private func scheduleUpdate() {
+        guard updateTask == nil else {
+            needsAnotherUpdate = true
+            return
+        }
+        updateTask = Task { [weak self] in
+            await self?.updateCache()
+            guard let self else {
+                return
+            }
+            updateTask = nil
+            if needsAnotherUpdate {
+                needsAnotherUpdate = false
+                scheduleUpdate()
+            }
+        }
     }
 
     // MARK: Capturing Images
