@@ -587,13 +587,34 @@ extension HIDEventManager {
         "com.apple.controlcenter",
     ]
 
-    /// The windows on screen that could be a system item's panel, as `ItemClick27` wants them.
-    private static func windowsForPanelCheck() -> [(number: Int, layer: Int, height: CGFloat)] {
-        let owners = Set(
+    /// The process identifiers of ``panelOwnerBundleIDs``, from the last time all of them
+    /// were running.
+    private static var panelOwnerPIDsCache: Set<pid_t>?
+
+    /// The process identifiers of the processes that draw the system items' panels.
+    ///
+    /// Asking for every running application is not cheap, and the panel check is polled, so
+    /// the identifiers are kept for as long as each of those processes is still alive.
+    private static var panelOwnerPIDs: Set<pid_t> {
+        if
+            let panelOwnerPIDsCache,
+            panelOwnerPIDsCache.count == panelOwnerBundleIDs.count,
+            panelOwnerPIDsCache.allSatisfy({ kill($0, 0) == 0 })
+        {
+            return panelOwnerPIDsCache
+        }
+        let pids = Set(
             NSWorkspace.shared.runningApplications
                 .filter { panelOwnerBundleIDs.contains($0.bundleIdentifier ?? "") }
                 .map(\.processIdentifier)
         )
+        panelOwnerPIDsCache = pids
+        return pids
+    }
+
+    /// The windows on screen that could be a system item's panel, as `ItemClick27` wants them.
+    private static func windowsForPanelCheck() -> [(number: Int, layer: Int, height: CGFloat)] {
+        let owners = panelOwnerPIDs
         let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
         return windows.compactMap { window in
             guard
