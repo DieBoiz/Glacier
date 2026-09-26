@@ -175,9 +175,13 @@ final class AppState: ObservableObject {
             .store(in: &c)
 
         publisherForWindow(.settings)
-            .removeNil()
-            .flatMap { $0.publisher(for: \.isVisible) }
-            .replaceEmpty(with: false)
+            .map { window -> AnyPublisher<Bool, Never> in
+                guard let window else {
+                    return Just(false).eraseToAnyPublisher()
+                }
+                return window.publisher(for: \.isVisible).eraseToAnyPublisher()
+            }
+            .switchToLatest()
             .throttle(for: 0.1, scheduler: DispatchQueue.main, latest: true)
             .removeDuplicates()
             .sink { [weak self] isPresented in

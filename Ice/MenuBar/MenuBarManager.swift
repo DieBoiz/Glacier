@@ -138,7 +138,9 @@ final class MenuBarManager: ObservableObject {
 
         $settingsWindow
             .removeNil()
-            .flatMap { $0.publisher(for: \.isVisible) }
+            .removeDuplicates { $0 === $1 }
+            .map { $0.publisher(for: \.isVisible) }
+            .switchToLatest()
             .discardMerge(Timer.publish(every: 5, on: .main, in: .default).autoconnect())
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in
