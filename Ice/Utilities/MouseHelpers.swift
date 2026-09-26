@@ -8,6 +8,31 @@ import OSLog
 
 /// A namespace for mouse helper operations.
 enum MouseHelpers {
+    /// The location of the mouse cursor in both coordinate spaces,
+    /// read once and passed around, rather than asked for again by
+    /// every check that needs it.
+    struct Location {
+        /// The location in the coordinate space used by `AppKit`, with
+        /// the origin at the bottom left of the screen.
+        let appKit: CGPoint
+
+        /// The location in the coordinate space used by `CoreGraphics`,
+        /// with the origin at the top left of the screen.
+        let coreGraphics: CGPoint
+
+        /// Creates a location from the location of the given event.
+        init(event: CGEvent) {
+            self.appKit = event.unflippedLocation
+            self.coreGraphics = event.location
+        }
+    }
+
+    /// Returns the location of the mouse cursor in both coordinate
+    /// spaces.
+    static var location: Location? {
+        CGEvent(source: nil).map(Location.init)
+    }
+
     /// Returns the location of the mouse cursor in the coordinate
     /// space used by `AppKit`, with the origin at the bottom left
     /// of the screen.

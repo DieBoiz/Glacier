@@ -105,7 +105,7 @@ final class HIDEventManager: ObservableObject {
         option: .listenOnly
     ) { [weak self] _, event in
         if let self, isEnabled, let appState, let screen = bestScreen(appState: appState) {
-            handleShowOnHover(appState: appState, screen: screen)
+            handleShowOnHover(appState: appState, screen: screen, location: MouseHelpers.Location(event: event))
         }
         return event
     }
@@ -185,7 +185,7 @@ final class HIDEventManager: ObservableObject {
                     return
                 }
                 if let screen = bestScreen(appState: appState) {
-                    handleShowOnHover(appState: appState, screen: screen)
+                    handleShowOnHover(appState: appState, screen: screen, location: MouseHelpers.location)
                 }
             }
             .store(in: &c)
@@ -593,7 +593,7 @@ extension HIDEventManager {
 
     // MARK: Handle Show On Hover
 
-    private func handleShowOnHover(appState: AppState, screen: NSScreen) {
+    private func handleShowOnHover(appState: AppState, screen: NSScreen, location: MouseHelpers.Location?) {
         // Make sure the "ShowOnHover" feature is enabled.
         //
         // `showOnHoverAllowed` is deliberately *not* checked here. It is cleared
@@ -619,13 +619,12 @@ extension HIDEventManager {
         if hiddenSection.isHidden {
             guard
                 appState.menuBarManager.showOnHoverAllowed,
-                isMouseInsideEmptyMenuBarSpace(appState: appState, screen: screen)
+                let location,
+                isMouseInsideEmptyMenuBarSpace(appState: appState, screen: screen, location: location)
             else {
                 return
             }
-            if let location = MouseHelpers.locationCoreGraphics {
-                lastEmptyMenuBarPoints[screen.displayID] = location
-            }
+            lastEmptyMenuBarPoints[screen.displayID] = location.coreGraphics
             Task {
                 try await Task.sleep(for: .seconds(delay))
                 // Make sure the mouse is still inside.
@@ -636,8 +635,8 @@ extension HIDEventManager {
             }
         } else {
             guard
-                !isMouseInsideMenuBar(appState: appState, screen: screen),
-                !isMouseInsideIceBar(appState: appState)
+                !isMouseInsideMenuBar(appState: appState, screen: screen, location: location),
+                !isMouseInsideIceBar(appState: appState, location: location)
             else {
                 return
             }
@@ -665,17 +664,21 @@ extension HIDEventManager {
             return
         }
 
-        guard isMouseInsideMenuBar(appState: appState, screen: screen) else {
+        guard let location = event.cgEvent.map(MouseHelpers.Location.init) ?? MouseHelpers.location else {
             return
         }
 
-        if isMouseInsideMenuBarItem(appState: appState, screen: screen) {
+        guard isMouseInsideMenuBar(appState: appState, screen: screen, location: location) else {
+            return
+        }
+
+        if isMouseInsideMenuBarItem(appState: appState, screen: screen, location: location) {
             switch event.type {
             case .leftMouseDown:
                 if appState.menuBarManager.hasVisibleSection {
                     break
                 }
-                if isMouseInsideIceIcon(appState: appState) {
+                if isMouseInsideIceIcon(appState: appState, location: location) {
                     break
                 }
                 return
@@ -687,7 +690,7 @@ extension HIDEventManager {
             default:
                 return
             }
-        } else if isMouseInsideApplicationMenu(appState: appState, screen: screen) {
+        } else if isMouseInsideApplicationMenu(appState: appState, screen: screen, location: location) {
             return
         }
 
@@ -729,8 +732,12 @@ extension HIDEventManager {
 
     /// A Boolean value that indicates whether the mouse pointer is within
     /// the bounds of the menu bar.
-    func isMouseInsideMenuBar(appState: AppState, screen: NSScreen) -> Bool {
-        guard let mouseLocation = MouseHelpers.locationAppKit else {
+    func isMouseInsideMenuBar(
+        appState: AppState,
+        screen: NSScreen,
+        location: MouseHelpers.Location? = MouseHelpers.location
+    ) -> Bool {
+        guard let mouseLocation = location?.appKit else {
             return false
         }
 
@@ -759,9 +766,13 @@ extension HIDEventManager {
 
     /// A Boolean value that indicates whether the mouse pointer is within
     /// the bounds of the current application menu.
-    func isMouseInsideApplicationMenu(appState: AppState, screen: NSScreen) -> Bool {
+    func isMouseInsideApplicationMenu(
+        appState: AppState,
+        screen: NSScreen,
+        location: MouseHelpers.Location? = MouseHelpers.location
+    ) -> Bool {
         guard
-            let mouseLocation = MouseHelpers.locationCoreGraphics,
+            let mouseLocation = location?.coreGraphics,
             var applicationMenuFrame = screen.getApplicationMenuFrame()
         else {
             return false
@@ -773,8 +784,12 @@ extension HIDEventManager {
 
     /// A Boolean value that indicates whether the mouse pointer is within
     /// the bounds of a menu bar item.
-    func isMouseInsideMenuBarItem(appState: AppState, screen: NSScreen) -> Bool {
-        guard let mouseLocation = MouseHelpers.locationCoreGraphics else {
+    func isMouseInsideMenuBarItem(
+        appState: AppState,
+        screen: NSScreen,
+        location: MouseHelpers.Location? = MouseHelpers.location
+    ) -> Bool {
+        guard let mouseLocation = location?.coreGraphics else {
             return false
         }
         if #available(macOS 27.0, *) {
@@ -806,9 +821,13 @@ extension HIDEventManager {
     /// the bounds of the screen's notch, if it has one.
     ///
     /// If the screen does not have a notch, this property returns `false`.
-    func isMouseInsideNotch(appState: AppState, screen: NSScreen) -> Bool {
+    func isMouseInsideNotch(
+        appState: AppState,
+        screen: NSScreen,
+        location: MouseHelpers.Location? = MouseHelpers.location
+    ) -> Bool {
         guard
-            let mouseLocation = MouseHelpers.locationAppKit,
+            let mouseLocation = location?.appKit,
             var frameOfNotch = screen.frameOfNotch
         else {
             return false
@@ -819,18 +838,25 @@ extension HIDEventManager {
 
     /// A Boolean value that indicates whether the mouse pointer is within
     /// the bounds of an empty space in the menu bar.
-    func isMouseInsideEmptyMenuBarSpace(appState: AppState, screen: NSScreen) -> Bool {
+    func isMouseInsideEmptyMenuBarSpace(
+        appState: AppState,
+        screen: NSScreen,
+        location: MouseHelpers.Location? = MouseHelpers.location
+    ) -> Bool {
+        guard let location else {
+            return false
+        }
         guard
-            isMouseInsideMenuBar(appState: appState, screen: screen),
-            !isMouseInsideApplicationMenu(appState: appState, screen: screen),
-            !isMouseInsideMenuBarItem(appState: appState, screen: screen),
-            !isMouseInsideNotch(appState: appState, screen: screen)
+            isMouseInsideMenuBar(appState: appState, screen: screen, location: location),
+            !isMouseInsideApplicationMenu(appState: appState, screen: screen, location: location),
+            !isMouseInsideMenuBarItem(appState: appState, screen: screen, location: location),
+            !isMouseInsideNotch(appState: appState, screen: screen, location: location)
         else {
             return false
         }
         if #available(macOS 27.0, *) {
             // The gaps between items are part of the items' own run of the bar.
-            return !isMouseInsideItemsArea(appState: appState, screen: screen)
+            return !isMouseInsideItemsArea(appState: appState, screen: screen, location: location)
         }
         return true
     }
@@ -838,8 +864,12 @@ extension HIDEventManager {
     /// A Boolean value that indicates whether the mouse pointer rests in the part of the
     /// menu bar that holds items, including the gaps between them.
     @available(macOS 27.0, *)
-    func isMouseInsideItemsArea(appState: AppState, screen: NSScreen) -> Bool {
-        guard let mouseLocation = MouseHelpers.locationCoreGraphics else {
+    func isMouseInsideItemsArea(
+        appState: AppState,
+        screen: NSScreen,
+        location: MouseHelpers.Location? = MouseHelpers.location
+    ) -> Bool {
+        guard let mouseLocation = location?.coreGraphics else {
             return false
         }
         let items = appState.itemManager.itemCache.managedItems.map { item in
@@ -859,8 +889,8 @@ extension HIDEventManager {
 
     /// A Boolean value that indicates whether the mouse pointer is within
     /// the bounds of the Ice Bar panel.
-    func isMouseInsideIceBar(appState: AppState) -> Bool {
-        guard let mouseLocation = MouseHelpers.locationAppKit else {
+    func isMouseInsideIceBar(appState: AppState, location: MouseHelpers.Location? = MouseHelpers.location) -> Bool {
+        guard let mouseLocation = location?.appKit else {
             return false
         }
         let panel = appState.menuBarManager.iceBarPanel
@@ -872,11 +902,11 @@ extension HIDEventManager {
 
     /// A Boolean value that indicates whether the mouse pointer is within
     /// the bounds of the Ice icon.
-    func isMouseInsideIceIcon(appState: AppState) -> Bool {
+    func isMouseInsideIceIcon(appState: AppState, location: MouseHelpers.Location? = MouseHelpers.location) -> Bool {
         guard
             let visibleSection = appState.menuBarManager.section(withName: .visible),
             let iceIconFrame = visibleSection.controlItem.frame,
-            let mouseLocation = MouseHelpers.locationAppKit
+            let mouseLocation = location?.appKit
         else {
             return false
         }
