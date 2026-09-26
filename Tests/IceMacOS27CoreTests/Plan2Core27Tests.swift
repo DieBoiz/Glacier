@@ -89,6 +89,24 @@ struct ItemImages27Tests {
     }
 }
 
+@Suite("ItemImageRetention27")
+struct ItemImageRetention27Tests {
+    private let day: TimeInterval = 24 * 60 * 60
+    private let seen = Date(timeIntervalSinceReferenceDate: 0)
+
+    @Test("An image is kept for thirty days after its item was last seen")
+    func lifetime() {
+        #expect(!ItemImageRetention27.isExpired(lastSeen: seen, now: seen.addingTimeInterval(29 * day)))
+        #expect(ItemImageRetention27.isExpired(lastSeen: seen, now: seen.addingTimeInterval(30 * day)))
+    }
+
+    @Test("A sighting is noted again at most once a day")
+    func refresh() {
+        #expect(!ItemImageRetention27.needsRefresh(lastSeen: seen, now: seen.addingTimeInterval(day - 1)))
+        #expect(ItemImageRetention27.needsRefresh(lastSeen: seen, now: seen.addingTimeInterval(day)))
+    }
+}
+
 @Suite("PhotoSchedule27")
 struct PhotoSchedule27Tests {
     @Test("An application is photographed at most once every ten minutes")

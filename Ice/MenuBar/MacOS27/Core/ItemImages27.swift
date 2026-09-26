@@ -480,6 +480,30 @@ enum ItemImages27 {
     }
 }
 
+/// Decides how long a stored item image is kept after its item was last seen.
+///
+/// Images are kept on disk so a concealed item still has one, but an application that
+/// was removed never shows its item again, and its image stayed for good. When an item
+/// was last seen is noted at most once a day, so the index is not rewritten on every
+/// capture just to record it.
+enum ItemImageRetention27 {
+    /// How long an image outlives the last sighting of its item.
+    static let lifetime: TimeInterval = 30 * 24 * 60 * 60
+
+    /// How stale a sighting may be before it is noted again.
+    static let refreshInterval: TimeInterval = 24 * 60 * 60
+
+    /// Whether a sighting of the item now is worth noting.
+    static func needsRefresh(lastSeen: Date, now: Date) -> Bool {
+        now.timeIntervalSince(lastSeen) >= refreshInterval
+    }
+
+    /// Whether the image of an item last seen then is to be dropped now.
+    static func isExpired(lastSeen: Date, now: Date) -> Bool {
+        now.timeIntervalSince(lastSeen) >= lifetime
+    }
+}
+
 /// Decides when an application may be shown for a moment to photograph its item.
 struct PhotoSchedule27 {
     static let minimumInterval: TimeInterval = 600

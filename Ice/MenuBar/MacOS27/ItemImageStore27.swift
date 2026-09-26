@@ -25,6 +25,9 @@ final class ItemImageStore27 {
     private struct IndexEntry: Codable {
         let fileName: String
         let scale: CGFloat
+        /// When the item was last seen on the bar (see `ItemImageRetention27`). Missing from
+        /// indexes written before it was kept.
+        var lastSeen: Date?
     }
 
     /// Bumped when stored images change shape. Version 1 kept the menu bar behind the
@@ -89,7 +92,13 @@ final class ItemImageStore27 {
             let data = try? Data(contentsOf: directory.appendingPathComponent("index.json")),
             let stored = try? JSONDecoder().decode([String: IndexEntry].self, from: data)
         {
-            index = stored
+            // An entry from before sightings were noted counts as seen now.
+            let now = Date()
+            index = stored.mapValues { entry in
+                var entry = entry
+                entry.lastSeen = entry.lastSeen ?? now
+                return entry
+            }
         }
         // Glyphs are stored in the colour that suits the current appearance, so a switch
         // between light and dark needs them captured again.
@@ -214,7 +223,11 @@ final class ItemImageStore27 {
         for tile in processed where store(tile, scale: scale) {
             stored += 1
         }
-        if stored > 0 {
+        // Concealed items are read too, at the frames they were last drawn at, so they
+        // count as seen and keep their images.
+        let noted = noteSightings(of: items.map(\.tag.description))
+        let pruned = pruneExpiredImages()
+        if stored > 0 || noted || pruned {
             writeIndex()
         }
         logger.debug(
@@ -495,7 +508,7 @@ final class ItemImageStore27 {
         let key = tile.key
         let fileName = ItemImages27.fileName(forTag: key)
         loaded[key] = CapturedImage(cgImage: tile.image, scale: scale)
-        index[key] = IndexEntry(fileName: fileName, scale: scale)
+        index[key] = IndexEntry(fileName: fileName, scale: scale, lastSeen: Date())
         digests[key] = tile.digest
         guard let data = tile.png else {
             return true
@@ -505,6 +518,49 @@ final class ItemImageStore27 {
             try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             try? data.write(to: directory.appendingPathComponent(fileName), options: .atomic)
         }
+        return true
+    }
+
+    /// Notes that the items with the given keys are on the bar, returning whether the
+    /// index changed.
+    private func noteSightings(of keys: [String]) -> Bool {
+        let now = Date()
+        var changed = false
+        for key in keys {
+            guard
+                var entry = index[key],
+                entry.lastSeen.map({ ItemImageRetention27.needsRefresh(lastSeen: $0, now: now) }) ?? true
+            else {
+                continue
+            }
+            entry.lastSeen = now
+            index[key] = entry
+            changed = true
+        }
+        return changed
+    }
+
+    /// Drops the images of items not seen for a long time, returning whether any were.
+    private func pruneExpiredImages() -> Bool {
+        let now = Date()
+        let expired = index.filter { _, entry in
+            entry.lastSeen.map { ItemImageRetention27.isExpired(lastSeen: $0, now: now) } ?? false
+        }
+        guard !expired.isEmpty else {
+            return false
+        }
+        for key in expired.keys {
+            index[key] = nil
+            loaded[key] = nil
+            digests[key] = nil
+        }
+        let files = expired.values.map { directory.appendingPathComponent($0.fileName) }
+        Task.detached(priority: .utility) {
+            for file in files {
+                try? FileManager.default.removeItem(at: file)
+            }
+        }
+        logger.info("Dropped \(expired.count, privacy: .public) images of items not seen for a long time")
         return true
     }
 
