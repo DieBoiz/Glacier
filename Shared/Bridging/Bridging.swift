@@ -426,16 +426,19 @@ extension Bridging {
             }
         }
 
+        if option.contains(.itemsOnly) {
+            predicates.append { windowID in
+                getWindowLevel(for: windowID) != kCGMainMenuWindowLevel
+            }
+        }
+
+        // Copying the spaces of a window costs the most, so check it last,
+        // for the windows that pass the other checks. The windows can't be
+        // checked in one call, as it returns the spaces for all of them.
         if option.contains(.activeSpace) {
             let activeSpaceID = getActiveSpaceID()
             predicates.append { windowID in
                 isWindowOnSpace(windowID, activeSpaceID)
-            }
-        }
-
-        if option.contains(.itemsOnly) {
-            predicates.append { windowID in
-                getWindowLevel(for: windowID) != kCGMainMenuWindowLevel
             }
         }
 
