@@ -125,9 +125,18 @@ final class Concealer27 {
             return application.processIdentifier
         })
         lastChangeAt = .now
+        updateGeneration += 1
+        let generation = updateGeneration
         let previous = applyTask
-        let task = Task { [controller, logger] in
+        let task = Task { [weak self, controller, logger] in
             await previous?.value
+            // Applies follow one another, so a burst of updates queued one apply behind the
+            // other, each laying the bar out again. Only the latest target is worth applying,
+            // as it comes later in the queue. Releases are never skipped, so applies and
+            // releases still land in the order they were asked for.
+            guard let self, updateGeneration == generation else {
+                return
+            }
             do {
                 try await controller.apply(target: target, running: running)
             } catch {
@@ -137,14 +146,21 @@ final class Concealer27 {
         applyTask = task
         // Concealing moves the remaining items, and hover hit-testing uses their cached
         // frames. The refresh stays out of `applyTask`, so a slow read never holds up the
-        // next change. The bar animates for about 250 ms (measured).
+        // next change. The bar animates for about 250 ms (measured). Only the refresh after
+        // the latest update runs, as each one reads every application's items.
         Task { [weak self] in
             await task.value
             try? await Task.sleep(for: .milliseconds(400))
-            await self?.appState?.itemManager.cacheItemsIfNeeded()
-            await self?.logStuckOverflowIfNeeded()
+            guard let self, updateGeneration == generation else {
+                return
+            }
+            await self.appState?.itemManager.cacheItemsIfNeeded()
+            await logStuckOverflowIfNeeded()
         }
     }
+
+    /// Counts the updates made, so an update overtaken by a later one is skipped.
+    private var updateGeneration = 0
 
     /// Releases every assertion for a moment, so a click can reach a system item.
     func suspend(for duration: Duration) {
