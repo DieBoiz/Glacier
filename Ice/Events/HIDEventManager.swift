@@ -42,6 +42,15 @@ final class HIDEventManager: ObservableObject {
         readAt: ContinuousClock.Instant
     )?
 
+    /// What a pending show-on-hover task is going to do.
+    private enum HoverAction: Equatable {
+        case show(CGDirectDisplayID)
+        case hide
+    }
+
+    /// The pending show-on-hover task, with what it is going to do.
+    private var hoverTask: (action: HoverAction, task: Task<Void, Never>)?
+
 
     /// A Boolean value that indicates whether the manager is enabled.
     private var isEnabled = false {
@@ -650,10 +659,9 @@ extension HIDEventManager {
                 return
             }
             lastEmptyMenuBarPoints[screen.displayID] = location.coreGraphics
-            Task {
-                try await Task.sleep(for: .seconds(delay))
+            scheduleHoverAction(.show(screen.displayID), after: .seconds(delay)) { [weak self] in
                 // Make sure the mouse is still inside.
-                guard isMouseInsideEmptyMenuBarSpace(appState: appState, screen: screen) else {
+                guard let self, isMouseInsideEmptyMenuBarSpace(appState: appState, screen: screen) else {
                     return
                 }
                 hiddenSection.show()
@@ -665,10 +673,10 @@ extension HIDEventManager {
             else {
                 return
             }
-            Task {
-                try await Task.sleep(for: .seconds(delay))
+            scheduleHoverAction(.hide, after: .seconds(delay)) { [weak self] in
                 // Make sure the mouse is still outside.
                 guard
+                    let self,
                     !isMouseInsideMenuBar(appState: appState, screen: screen),
                     !isMouseInsideIceBar(appState: appState)
                 else {
@@ -677,6 +685,28 @@ extension HIDEventManager {
                 hiddenSection.hide()
             }
         }
+    }
+
+    /// Performs the given show-on-hover action after a delay, unless the same action
+    /// is already pending.
+    ///
+    /// The mouse moves many times a second, and each move used to start a task of its
+    /// own. A pending action is only replaced by a different one, so its delay still
+    /// counts from the first move that asked for it.
+    private func scheduleHoverAction(_ action: HoverAction, after delay: Duration, perform: @escaping () -> Void) {
+        if hoverTask?.action == action {
+            return
+        }
+        hoverTask?.task.cancel()
+        let task = Task { [weak self] in
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled else {
+                return
+            }
+            self?.hoverTask = nil
+            perform()
+        }
+        hoverTask = (action, task)
     }
 
     // MARK: Handle Prevent Show On Hover
