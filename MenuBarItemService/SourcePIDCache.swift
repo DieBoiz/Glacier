@@ -22,12 +22,24 @@ import os
 /// in a dedicated XPC service, which we then call asynchronously from
 /// the main app.
 final class SourcePIDCache {
+    /// The timeout, in seconds, for the accessibility messages that the
+    /// cache sends to other apps.
+    ///
+    /// A cached extras menu bar skips the check for an unresponsive app,
+    /// so a stuck app would otherwise block a request for the default
+    /// timeout of 6 seconds.
+    private static let messagingTimeout: Float = 1
+
     /// An object that contains a running application and provides an
     /// interface to access relevant information, such as its process
     /// identifier and extras menu bar.
+    ///
+    /// Lookups for different windows can run at the same time, so the
+    /// object guards its mutable state with a lock, which it never holds
+    /// while calling into another app.
     private final class CachedApplication {
         private let runningApp: NSRunningApplication
-        private var extrasMenuBar: UIElement?
+        private let extrasMenuBar = OSAllocatedUnfairLock<UIElement?>(uncheckedState: nil)
 
         /// The app's process identifier.
         var processIdentifier: pid_t {
@@ -37,7 +49,7 @@ final class SourcePIDCache {
         /// A Boolean value indicating whether the app's extras menu
         /// bar has been successfully created and stored.
         var hasExtrasMenuBar: Bool {
-            extrasMenuBar != nil
+            extrasMenuBar.withLockUnchecked { $0 != nil }
         }
 
         /// A Boolean value indicating whether the app is in a valid
@@ -63,17 +75,21 @@ final class SourcePIDCache {
         /// When the element is first created, it gets stored for efficient
         /// access on subsequent calls.
         func getOrCreateExtrasMenuBar() -> UIElement? {
-            if let extrasMenuBar {
-                return extrasMenuBar
+            if let bar = extrasMenuBar.withLockUnchecked({ $0 }) {
+                return bar
             }
             guard
                 isValidForAccessibility,
-                let app = AXHelpers.application(for: runningApp),
-                let bar = AXHelpers.extrasMenuBar(for: app)
+                let app = AXHelpers.application(for: runningApp)
             else {
                 return nil
             }
-            extrasMenuBar = bar
+            AXUIElementSetMessagingTimeout(app.element, messagingTimeout)
+            guard let bar = AXHelpers.extrasMenuBar(for: app) else {
+                return nil
+            }
+            AXUIElementSetMessagingTimeout(bar.element, messagingTimeout)
+            extrasMenuBar.withLockUnchecked { $0 = bar }
             return bar
         }
     }
@@ -82,86 +98,77 @@ final class SourcePIDCache {
     private struct State {
         var apps = [CachedApplication]()
         var pids = [CGWindowID: pid_t]()
+    }
 
-        /// Returns the latest bounds of the given window after ensuring
-        /// that the bounds are stable (a.k.a. not currently changing).
-        ///
-        /// This method blocks until stable bounds can be determined, or
-        /// until retrieving the bounds for the window fails.
-        private func stableBounds(for window: WindowInfo) -> CGRect? {
-            var cachedBounds = window.bounds
+    /// Returns the latest bounds of the given window after ensuring
+    /// that the bounds are stable (a.k.a. not currently changing).
+    ///
+    /// This method blocks until stable bounds can be determined, or
+    /// until retrieving the bounds for the window fails.
+    private static func stableBounds(for window: WindowInfo) -> CGRect? {
+        var cachedBounds = window.bounds
 
-            for n in 1...5 {
-                guard let currentBounds = window.currentBounds() else {
-                    // Failure here means the window probably doesn't
-                    // exist anymore.
-                    return nil
-                }
-                if currentBounds == cachedBounds {
-                    return currentBounds
-                }
-                cachedBounds = currentBounds
-                // Compute the sleep interval from the current attempt.
-                Thread.sleep(forTimeInterval: TimeInterval(n) / 100)
+        for n in 1...5 {
+            guard let currentBounds = window.currentBounds() else {
+                // Failure here means the window probably doesn't
+                // exist anymore.
+                return nil
             }
+            if currentBounds == cachedBounds {
+                return currentBounds
+            }
+            cachedBounds = currentBounds
+            // Compute the sleep interval from the current attempt.
+            Thread.sleep(forTimeInterval: TimeInterval(n) / 100)
+        }
 
+        return nil
+    }
+
+    /// Finds the process identifier for the given window by searching
+    /// the extras menu bars of the given apps.
+    ///
+    /// This method blocks while it calls into other apps, so it must not
+    /// be called while holding the lock for the cache's state.
+    private static func findPID(for window: WindowInfo, in apps: [CachedApplication]) -> pid_t? {
+        guard
+            AXHelpers.isProcessTrusted(),
+            let windowBounds = stableBounds(for: window)
+        else {
             return nil
         }
 
-        /// Reorders the cached apps so that those that are confirmed
-        /// to have an extras menu bar are first in the array.
-        private mutating func partitionApps() {
-            var lhs = [CachedApplication]()
-            var rhs = [CachedApplication]()
+        // Search the apps that are confirmed to have an extras menu
+        // bar first.
+        let apps = apps.filter { $0.hasExtrasMenuBar } + apps.filter { !$0.hasExtrasMenuBar }
 
-            for app in apps {
-                if app.hasExtrasMenuBar {
-                    lhs.append(app)
-                } else {
-                    rhs.append(app)
-                }
+        for app in apps {
+            guard let bar = app.getOrCreateExtrasMenuBar() else {
+                continue
             }
-
-            apps = lhs + rhs
-        }
-
-        /// Updates the cached process identifier for the given window.
-        mutating func updatePID(for window: WindowInfo) {
-            guard
-                AXHelpers.isProcessTrusted(),
-                let windowBounds = stableBounds(for: window)
-            else {
-                return
-            }
-
-            partitionApps()
-
-            for app in apps {
-                guard let bar = app.getOrCreateExtrasMenuBar() else {
+            for child in AXHelpers.children(for: bar) {
+                AXUIElementSetMessagingTimeout(child.element, messagingTimeout)
+                guard AXHelpers.isEnabled(child) else {
                     continue
                 }
-                for child in AXHelpers.children(for: bar) {
-                    guard AXHelpers.isEnabled(child) else {
-                        continue
-                    }
-                    guard
-                        let childFrame = AXHelpers.frame(for: child),
-                        childFrame.center.distance(to: windowBounds.center) <= 1
-                    else {
-                        continue
-                    }
-                    pids[window.windowID] = app.processIdentifier
-                    return
+                guard
+                    let childFrame = AXHelpers.frame(for: child),
+                    childFrame.center.distance(to: windowBounds.center) <= 1
+                else {
+                    continue
                 }
+                return app.processIdentifier
             }
         }
+
+        return nil
     }
 
     /// The shared cache.
     static let shared = SourcePIDCache()
 
     /// The cache's protected state.
-    private let state = OSAllocatedUnfairLock(initialState: State())
+    private let state = OSAllocatedUnfairLock(uncheckedState: State())
 
     /// Observer for running applications.
     private lazy var cancellable = NSWorkspace.shared.publisher(for: \.runningApplications).sink { [weak self] runningApps in
@@ -173,7 +180,7 @@ final class SourcePIDCache {
 
         let windowIDs = Bridging.getMenuBarWindowList(option: .itemsOnly)
 
-        state.withLock { state in
+        state.withLockUnchecked { state in
             // Convert the cached state to dictionaries keyed by pid to
             // allow for efficient repeated access.
             let appMappings = state.apps.reduce(into: [:]) { result, app in
@@ -219,12 +226,21 @@ final class SourcePIDCache {
     /// Returns the cached process identifier for the given window,
     /// updating the cache if needed.
     func pid(for window: WindowInfo) -> pid_t? {
-        state.withLock { state in
-            if let pid = state.pids[window.windowID] {
-                return pid
-            }
-            state.updatePID(for: window)
-            return state.pids[window.windowID]
+        // Snapshot the state and search outside the lock, so that a slow
+        // app doesn't hold up other requests or the observer for running
+        // applications.
+        let (cachedPID, apps) = state.withLockUnchecked { state in
+            (state.pids[window.windowID], state.apps)
         }
+        if let cachedPID {
+            return cachedPID
+        }
+        guard let pid = Self.findPID(for: window, in: apps) else {
+            return nil
+        }
+        state.withLockUnchecked { state in
+            state.pids[window.windowID] = pid
+        }
+        return pid
     }
 }
