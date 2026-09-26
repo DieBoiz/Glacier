@@ -77,6 +77,19 @@ struct MenuBarItem: CustomStringConvertible {
         return NSRunningApplication(processIdentifier: sourcePID)
     }
 
+    /// The bundle identifiers of the applications that created the given items, keyed
+    /// by process identifier.
+    ///
+    /// Each process is looked up once. ``sourceApplication`` looks the process up on
+    /// every access, which adds up in a loop over every item on the bar.
+    static func sourceBundleIDs(of items: some Sequence<MenuBarItem>) -> [pid_t: String] {
+        var bundleIDs = [pid_t: String]()
+        for pid in Set(items.compactMap(\.sourcePID)) {
+            bundleIDs[pid] = NSRunningApplication(processIdentifier: pid)?.bundleIdentifier
+        }
+        return bundleIDs
+    }
+
     // TODO: Generate this once, during initialization.
     /// A name associated with the item, suited for display.
     var displayName: String {

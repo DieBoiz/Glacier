@@ -316,11 +316,12 @@ final class ItemImageStore27 {
     /// Shows the applications of items that have no image for a moment, and captures them.
     func photographMissing(items: [MenuBarItem], appState: AppState) async {
         let now = ProcessInfo.processInfo.systemUptime
+        let sourceBundleIDs = MenuBarItem.sourceBundleIDs(of: items)
         let bundleIDs = Set(items.compactMap { item -> String? in
             guard !item.isControlItem, image(for: item) == nil else {
                 return nil
             }
-            return item.sourceApplication?.bundleIdentifier
+            return item.sourcePID.flatMap { sourceBundleIDs[$0] }
         })
         .filter { photoSchedule.mayPhotograph(bundleID: $0, now: now) }
         guard !bundleIDs.isEmpty else {

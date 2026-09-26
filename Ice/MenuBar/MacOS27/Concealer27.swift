@@ -284,6 +284,7 @@ final class Concealer27 {
     func cacheFromSavedLayout(items: [MenuBarItem], displayID: CGDirectDisplayID?) -> MenuBarItemManager.ItemCache {
         var cache = MenuBarItemManager.ItemCache(displayID: displayID)
         let layout = savedLayout
+        let bundleIDs = MenuBarItem.sourceBundleIDs(of: items)
         for item in items.sorted(by: { $0.bounds.minX < $1.bounds.minX }) where item.canBeHidden && !item.isSystemClone {
             if item.isControlItem {
                 if item.tag == .visibleControlItem {
@@ -291,7 +292,7 @@ final class Concealer27 {
                 }
                 continue
             }
-            switch layout[item.sourceApplication?.bundleIdentifier ?? ""] ?? .visible {
+            switch layout[item.sourcePID.flatMap { bundleIDs[$0] } ?? ""] ?? .visible {
             case .visible: cache[.visible].append(item)
             case .hidden: cache[.hidden].append(item)
             case .alwaysHidden: cache[.alwaysHidden].append(item)
