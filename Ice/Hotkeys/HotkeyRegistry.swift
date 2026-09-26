@@ -61,6 +61,19 @@ final class HotkeyRegistry {
 
     private var cancellables = Set<AnyCancellable>()
 
+    deinit {
+        // The event handler holds an unretained pointer to the registry,
+        // so it must not outlive it.
+        for registration in registrations.values {
+            if let hotKeyRef = registration.hotKeyRef {
+                UnregisterEventHotKey(hotKeyRef)
+            }
+        }
+        if let eventHandlerRef {
+            RemoveEventHandler(eventHandlerRef)
+        }
+    }
+
     /// Installs the global event handler reference, if it isn't already installed.
     private func installIfNeeded() -> OSStatus {
         guard eventHandlerRef == nil else {
