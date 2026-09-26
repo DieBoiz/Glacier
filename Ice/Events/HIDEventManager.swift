@@ -480,6 +480,11 @@ extension HIDEventManager {
             return nil
         }
         let concealer = appState.concealer27
+        // Every click in the system waits on this tap, so one that cannot need bridging is
+        // let through before any work is done (`ClockBridgeZone27` says the same, later).
+        guard concealer.isConcealing else {
+            return event
+        }
         // The frames of the display the click landed on, so the clock of the display whose bar
         // is not active is recognised as well.
         let clickedDisplay = NSScreen.screens.first { CGDisplayBounds($0.displayID).contains(event.location) }?.displayID
