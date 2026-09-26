@@ -296,7 +296,15 @@ final class SourcePIDCache {
             in: apps,
             ignoringRetryDelay: retryDate == nil
         )
+        // Running apps may not change for a long time, so drop windows
+        // that no longer exist while we're here.
+        let windowIDs = Set(Bridging.getMenuBarWindowList())
         state.withLockUnchecked { state in
+            // An empty list means that getting it failed.
+            if !windowIDs.isEmpty {
+                state.pids = state.pids.filter { windowIDs.contains($0.key) }
+                state.retryDates = state.retryDates.filter { windowIDs.contains($0.key) }
+            }
             if let pid {
                 state.pids[window.windowID] = pid
                 state.retryDates[window.windowID] = nil
