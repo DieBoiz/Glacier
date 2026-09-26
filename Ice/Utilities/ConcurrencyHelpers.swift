@@ -14,13 +14,64 @@ struct TaskTimeoutError: CustomStringConvertible, LocalizedError {
     var errorDescription: String? { description }
 }
 
+/// Delivers the first result of a race between an operation and its
+/// timeout, exactly once, whichever way round the two arrive.
+private final class TimeoutRace<Success: Sendable>: Sendable {
+    private enum State: Sendable {
+        case waiting
+        case installed(CheckedContinuation<Success, any Error>)
+        case finished(Result<Success, any Error>)
+        case done
+    }
+
+    private let state = OSAllocatedUnfairLock(initialState: State.waiting)
+
+    /// Installs the continuation to resume, resuming it at once if the
+    /// race has already finished.
+    func install(_ continuation: CheckedContinuation<Success, any Error>) {
+        let result: Result<Success, any Error>? = state.withLock { state in
+            switch state {
+            case .waiting:
+                state = .installed(continuation)
+                return nil
+            case .finished(let result):
+                state = .done
+                return result
+            case .installed, .done:
+                return nil
+            }
+        }
+        if let result {
+            continuation.resume(with: result)
+        }
+    }
+
+    /// Finishes the race with the given result, unless it has already
+    /// finished.
+    func finish(with result: Result<Success, any Error>) {
+        let continuation: CheckedContinuation<Success, any Error>? = state.withLock { state in
+            switch state {
+            case .waiting:
+                state = .finished(result)
+                return nil
+            case .installed(let continuation):
+                state = .done
+                return continuation
+            case .finished, .done:
+                return nil
+            }
+        }
+        continuation?.resume(with: result)
+    }
+}
+
 extension Task {
     /// Runs the given throwing operation asynchronously alongside a
-    /// timeout operation in a structured task group.
+    /// timeout operation.
     ///
     /// If the operation does not complete within the provided
-    /// duration, the timeout operation cancels the group and throws
-    /// a ``TaskTimeoutError``.
+    /// duration, the operation is cancelled and a ``TaskTimeoutError``
+    /// is thrown at once, without waiting for the operation to finish.
     ///
     /// - Parameters:
     ///   - timeout: The duration the operation must complete within.
@@ -35,19 +86,33 @@ extension Task {
         clock: C,
         operation: sending @escaping @isolated(any) () async throws -> Success
     ) async throws -> Success {
-        try await withThrowingTaskGroup(of: Success.self) { group in
-            group.addTask {
-                try await operation()
-            }
-            group.addTask {
+        // Unstructured tasks, not a task group: leaving a group waits for
+        // every child, so an operation that ignored cancellation held the
+        // caller past the timeout for as long as it ran.
+        let race = TimeoutRace<Success>()
+        let operationTask = _Concurrency.Task<Success, any Error>(operation: operation)
+        let timeoutTask = _Concurrency.Task<Void, Never> {
+            do {
                 try await _Concurrency.Task.sleep(for: timeout, tolerance: tolerance, clock: clock)
-                throw TaskTimeoutError()
+            } catch {
+                return // Cancelled, as the operation finished first.
             }
-            guard let success = try await group.next() else {
-                throw _Concurrency.CancellationError()
+            operationTask.cancel()
+            race.finish(with: .failure(TaskTimeoutError()))
+        }
+        _Concurrency.Task<Void, Never> {
+            let result = await operationTask.result
+            timeoutTask.cancel()
+            race.finish(with: result)
+        }
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                race.install(continuation)
             }
-            group.cancelAll()
-            return success
+        } onCancel: {
+            operationTask.cancel()
+            timeoutTask.cancel()
+            race.finish(with: .failure(_Concurrency.CancellationError()))
         }
     }
 }
