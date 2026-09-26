@@ -43,7 +43,6 @@ final class MenuBarAppearanceEditorPanel: NSPanel {
     /// Sets up the panel.
     func performSetup(with appState: AppState) {
         self.appState = appState
-        configureContentView(with: appState)
         configureCancellables()
     }
 
@@ -88,8 +87,18 @@ final class MenuBarAppearanceEditorPanel: NSPanel {
 
     /// Shows the panel on the given screen.
     func show(on screen: NSScreen) {
+        // The content view is only kept while the panel is shown.
+        if !(contentView is MenuBarAppearanceEditorHostingView), let appState {
+            configureContentView(with: appState)
+        }
         updatePosition(for: screen)
         makeKeyAndOrderFront(nil)
+    }
+
+    /// Closes the panel and releases its content view.
+    override func close() {
+        super.close()
+        contentView = nil
     }
 }
 
