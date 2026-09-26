@@ -83,35 +83,68 @@ final class MenuBarItemSpacingManager {
 
         app.terminate()
 
+        // Resumed once, by whichever comes first: the app quitting, or the grace period after
+        // a force quit running out. It used to wait for the app to quit and nothing else, so an
+        // app that survived the force quit left the relaunch waiting for good.
+        let logger = logger
+        let forceTerminateDelay = forceTerminateDelay
+        let isResumed = OSAllocatedUnfairLock(initialState: false)
         var cancellable: AnyCancellable?
-        return try await withCheckedThrowingContinuation { continuation in
-            let timeoutTask = Task {
-                try await Task.sleep(for: .seconds(forceTerminateDelay))
-                if !app.isTerminated {
-                    logger.debug(
-                        """
-                        Application \"\(app.logString, privacy: .public)\" did not terminate within \
-                        \(self.forceTerminateDelay, privacy: .public) seconds, attempting to force terminate
-                        """
-                    )
-                    app.forceTerminate()
+        var timeoutTask: Task<Void, Never>?
+        defer {
+            cancellable?.cancel()
+            timeoutTask?.cancel()
+        }
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
+            let finish = { (result: Result<Void, any Error>) in
+                let isFirst = isResumed.withLock { isResumed in
+                    defer { isResumed = true }
+                    return !isResumed
+                }
+                if isFirst {
+                    continuation.resume(with: result)
                 }
             }
 
-            cancellable = app.publisher(for: \.isTerminated).sink { [weak self] isTerminated in
-                guard
-                    let self,
-                    isTerminated
-                else {
+            timeoutTask = Task {
+                do {
+                    try await Task.sleep(for: .seconds(forceTerminateDelay))
+                    if !app.isTerminated {
+                        logger.debug(
+                            """
+                            Application \"\(app.logString, privacy: .public)\" did not terminate within \
+                            \(forceTerminateDelay, privacy: .public) seconds, attempting to force terminate
+                            """
+                        )
+                        app.forceTerminate()
+                    }
+                    try await Task.sleep(for: .seconds(Self.forceTerminateGracePeriod))
+                } catch {
+                    return // The app quit.
+                }
+                if app.isTerminated {
+                    finish(.success(()))
+                } else {
+                    logger.error("Application \"\(app.logString, privacy: .public)\" did not terminate after being forced to")
+                    finish(.failure(QuitTimeoutError()))
+                }
+            }
+
+            cancellable = app.publisher(for: \.isTerminated).sink { isTerminated in
+                guard isTerminated else {
                     return
                 }
-                timeoutTask.cancel()
-                cancellable?.cancel()
                 logger.debug("Application \"\(app.logString, privacy: .public)\" terminated successfully")
-                continuation.resume()
+                finish(.success(()))
             }
         }
     }
+
+    /// How long an app is given to quit once it has been forced to.
+    private static let forceTerminateGracePeriod = 5
+
+    /// An error that indicates that an app did not quit, even when forced to.
+    private struct QuitTimeoutError: Error { }
 
     /// Asynchronously launches the app at the given URL.
     private nonisolated func launchApp(at applicationURL: URL, bundleIdentifier: String) async throws {
