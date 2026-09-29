@@ -53,14 +53,23 @@ final class Concealer27 {
             logger.error("MenuBarClientCore assertions are unavailable, so items will not be hidden")
             return
         }
-        let workspaceCenter = NSWorkspace.shared.notificationCenter
-        for name in [NSWorkspace.didLaunchApplicationNotification, NSWorkspace.didTerminateApplicationNotification] {
-            observers.append(workspaceCenter.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+        // Every assertion is an allowlist of the applications running when it was made, so an
+        // application missing from it has its items hidden. The workspace's launch notification
+        // is never posted for agents (`LSUIElement`), which is what most menu bar applications
+        // are, including the ones macOS starts on demand for recording and screen sharing: their
+        // items stayed hidden until something else happened to update the concealment. The
+        // running applications are observed instead, which covers agents as well.
+        NSWorkspace.shared.publisher(for: \.runningApplications)
+            .map { Set($0.compactMap(\.bundleIdentifier)) }
+            .removeDuplicates()
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
                 MainActor.assumeIsolated {
                     self?.update()
                 }
-            })
-        }
+            }
+            .store(in: &cancellables)
         observers.append(NotificationCenter.default.addObserver(
             forName: NSApplication.willTerminateNotification,
             object: nil,
