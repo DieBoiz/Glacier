@@ -288,8 +288,12 @@ extension HIDEventManager {
         else {
             return
         }
+        let clickLocation = MouseHelpers.location?.coreGraphics
 
         Task {
+            if await isMenuBarItem(at: clickLocation) {
+                return
+            }
             if NSEvent.modifierFlags == .control {
                 handleSecondaryContextMenu(appState: appState, screen: screen)
                 return
@@ -314,6 +318,16 @@ extension HIDEventManager {
 
             targetSection.toggle()
         }
+    }
+
+    /// Whether a click at the given location, which Ice's cached frames took for empty bar,
+    /// actually landed on a menu bar item. Only macOS 27 needs asking: there are no item
+    /// windows there, and the cached frames miss items (see `MenuBarItemProvider27.hasItem`).
+    private func isMenuBarItem(at location: CGPoint?) async -> Bool {
+        guard #available(macOS 27.0, *), let location else {
+            return false
+        }
+        return await MenuBarItemProvider27.hasItem(at: location)
     }
 
     // MARK: Handle Smart Rehide
@@ -396,7 +410,8 @@ extension HIDEventManager {
             guard
                 appState.settings.advanced.enableSecondaryContextMenu,
                 isMouseInsideEmptyMenuBarSpace(appState: appState, screen: screen),
-                let mouseLocation = MouseHelpers.locationAppKit
+                let mouseLocation = MouseHelpers.locationAppKit,
+                await !isMenuBarItem(at: MouseHelpers.location?.coreGraphics)
             else {
                 return
             }
@@ -933,7 +948,10 @@ extension HIDEventManager {
                 ItemHitTest27.Item(frame: item.bounds, ownerPID: item.ownerPID, isOnScreen: item.isOnScreen)
             }
             // On the display whose bar is not active only MenuBarAgent describes the items.
+            // Items that cannot be hidden, like the button that stops a recording, are missing
+            // from the cache, and a click on one must not count as a click on empty bar.
             let systemFrames = MenuBarItemProvider27.systemItemFrames()
+                + MenuBarItemProvider27.unhideableItemFrames()
                 + [MenuBarItemProvider27.overflowButtonFrame()].compactMap { $0 }
                 + MenuBarItemProvider27.inactiveDisplayItemFrames(for: screen.displayID)
             return ItemHitTest27.isInsideItem(
@@ -1028,6 +1046,7 @@ extension HIDEventManager {
             ItemHitTest27.Item(frame: item.bounds, ownerPID: item.ownerPID, isOnScreen: item.isOnScreen)
         }
         let systemFrames = MenuBarItemProvider27.systemItemFrames()
+            + MenuBarItemProvider27.unhideableItemFrames()
             + [MenuBarItemProvider27.overflowButtonFrame()].compactMap { $0 }
         return ItemHitTest27.isInsideItemsArea(
             point: mouseLocation,
