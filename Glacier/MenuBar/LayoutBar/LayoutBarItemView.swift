@@ -67,7 +67,11 @@ final class LayoutBarItemView: NSView {
         self.appState = appState
 
         // set the frame to the full item frame size; the image will be centered when displayed
-        super.init(frame: CGRect(origin: .zero, size: item.bounds.size))
+        var initialSize = item.bounds.size
+        if #available(macOS 27.0, *), appState.imageCache.images[item.tag] == nil {
+            initialSize = Self.fallbackSize
+        }
+        super.init(frame: CGRect(origin: .zero, size: initialSize))
         unregisterDraggedTypes()
 
         self.toolTip = item.displayName
@@ -140,14 +144,8 @@ final class LayoutBarItemView: NSView {
                 operation: .sourceOver,
                 fraction: isEnabled ? 1.0 : 0.67
             )
-            if cachedImage == nil, #available(macOS 27.0, *), let icon = item.sourceApplication?.icon {
-                let side = min(bounds.height, 20)
-                icon.draw(
-                    in: CGRect(x: bounds.midX - side / 2, y: bounds.midY - side / 2, width: side, height: side),
-                    from: .zero,
-                    operation: .sourceOver,
-                    fraction: isEnabled ? 1.0 : 0.67
-                )
+            if cachedImage == nil, #available(macOS 27.0, *) {
+                drawFallback()
             }
             if Bridging.isProcessUnresponsive(item.ownerPID) {
                 let warningImage = NSImage.warning
@@ -167,6 +165,46 @@ final class LayoutBarItemView: NSView {
                 )
             }
         }
+    }
+
+    /// Size of the view for an item that has no image.
+    private static let fallbackSize = CGSize(width: 56, height: 40)
+
+    /// Draws the app icon and name of an item that has no image, for example without the
+    /// Screen Recording permission.
+    private func drawFallback() {
+        let alpha = isEnabled ? 1.0 : 0.67
+        let iconSide: CGFloat = 20
+        if let icon = item.sourceApplication?.icon {
+            icon.draw(
+                in: CGRect(x: bounds.midX - iconSide / 2, y: bounds.maxY - iconSide - 2, width: iconSide, height: iconSide),
+                from: .zero,
+                operation: .sourceOver,
+                fraction: alpha
+            )
+        }
+        let style = NSMutableParagraphStyle()
+        style.alignment = .center
+        style.lineBreakMode = .byTruncatingTail
+        NSAttributedString(
+            string: item.displayName,
+            attributes: [
+                .font: NSFont.systemFont(ofSize: 9),
+                .foregroundColor: NSColor.labelColor.withAlphaComponent(alpha),
+                .paragraphStyle: style,
+            ]
+        ).draw(in: CGRect(x: 0, y: 0, width: bounds.width, height: 12))
+    }
+
+    /// An image of the view as it is drawn, for the drag of an item that has no image.
+    private func snapshot() -> NSImage? {
+        guard let rep = bitmapImageRepForCachingDisplay(in: bounds) else {
+            return nil
+        }
+        cacheDisplay(in: bounds, to: rep)
+        let image = NSImage(size: bounds.size)
+        image.addRepresentation(rep)
+        return image
     }
 
     override func mouseDown(with event: NSEvent) {
@@ -200,7 +238,7 @@ final class LayoutBarItemView: NSView {
         pasteboardItem.setData(Data(), forType: .layoutBarItem)
 
         let draggingItem = NSDraggingItem(pasteboardWriter: pasteboardItem)
-        draggingItem.setDraggingFrame(bounds, contents: cachedImage?.nsImage)
+        draggingItem.setDraggingFrame(bounds, contents: cachedImage?.nsImage ?? snapshot())
 
         beginDraggingSession(with: [draggingItem], event: event, source: self)
     }

@@ -378,23 +378,7 @@ private struct GlacierBarContentView: View {
 
     @ViewBuilder
     private var content: some View {
-        if !ScreenCapture.cachedCheckPermissions() {
-            HStack {
-                Text("The Glacier Bar requires screen recording permissions.")
-
-                Button {
-                    menuBarManager.section(withName: section)?.hide()
-                    appState.navigationState.settingsNavigationIdentifier = .advanced
-                    appState.activate(withPolicy: .regular)
-                    appState.openWindow(.settings)
-                } label: {
-                    Text("Open Glacier Settings")
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.link)
-            }
-            .padding(.horizontal, 10)
-        } else if menuBarManager.isMenuBarHiddenBySystemUserDefaults {
+        if menuBarManager.isMenuBarHiddenBySystemUserDefaults {
             Text("Glacier cannot display menu bar items for automatically hidden menu bars")
                 .padding(.horizontal, 10)
         } else if itemManager.itemCache.managedItems.isEmpty {
@@ -473,21 +457,43 @@ private struct GlacierBarItemView: View {
         clickAction(for: .right)
     }
 
-    var body: some View {
+    /// The item's image, or its app icon and name when the image is not available, for
+    /// example without the Screen Recording permission.
+    @ViewBuilder
+    private var itemContent: some View {
         if let image {
             Image(nsImage: image.nsImage)
-                .contentShape(Rectangle())
-                .overlay {
-                    GlacierBarItemClickView(
-                        item: item,
-                        leftClickAction: leftClickAction,
-                        rightClickAction: rightClickAction
-                    )
+        } else {
+            VStack(spacing: 1) {
+                if let icon = item.sourceApplication?.icon {
+                    Image(nsImage: icon)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 18, height: 18)
                 }
-                .accessibilityLabel(item.displayName)
-                .accessibilityAction(named: "left click", leftClickAction)
-                .accessibilityAction(named: "right click", rightClickAction)
+                Text(item.displayName)
+                    .font(.system(size: 9))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            .frame(width: 56)
+            .padding(.horizontal, 2)
         }
+    }
+
+    var body: some View {
+        itemContent
+            .contentShape(Rectangle())
+            .overlay {
+                GlacierBarItemClickView(
+                    item: item,
+                    leftClickAction: leftClickAction,
+                    rightClickAction: rightClickAction
+                )
+            }
+            .accessibilityLabel(item.displayName)
+            .accessibilityAction(named: "left click", leftClickAction)
+            .accessibilityAction(named: "right click", rightClickAction)
     }
 }
 

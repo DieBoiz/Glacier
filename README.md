@@ -20,7 +20,7 @@ Glacier is a menu bar manager for macOS. It hides and shows menu bar items, lets
 
 ## Install
 
-Download `Glacier-<version>.dmg` from the [latest release](../../releases/latest), open it and drag `Glacier.app` into your `Applications` folder. On first launch, grant the Accessibility and Screen Recording permissions when asked. Screen Recording is needed for the menu bar layout and the Glacier Bar.
+Download `Glacier-<version>.dmg` from the [latest release](../../releases/latest), open it and drag `Glacier.app` into your `Applications` folder. On first launch, grant the Accessibility permission when asked. Screen Recording is optional: without it, Glacier shows app icons and names instead of the real menu bar item images.
 
 ## Build
 

@@ -158,7 +158,7 @@ final class ScreenRecordingPermission: Permission {
             title: "Screen Recording",
             details: [
                 "Change the menu bar's appearance.",
-                "Display images of individual menu bar items.",
+                "Display the real images of menu bar items instead of app icons.",
             ],
             isRequired: false,
             settingsURL: URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"),

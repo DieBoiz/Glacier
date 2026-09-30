@@ -10,11 +10,7 @@ struct PermissionsView: View {
     @EnvironmentObject var manager: AppPermissions
 
     private var continueButtonText: LocalizedStringKey {
-        if case .hasRequired = manager.permissionsState {
-            "Continue in Limited Mode"
-        } else {
-            "Continue"
-        }
+        "Continue"
     }
 
     private var continueButtonForegroundStyle: some ShapeStyle {
@@ -24,7 +20,7 @@ struct PermissionsView: View {
         case .hasAll:
             AnyShapeStyle(.primary)
         case .hasRequired:
-            AnyShapeStyle(.yellow)
+            AnyShapeStyle(.primary)
         }
     }
 
@@ -169,7 +165,7 @@ struct PermissionsView: View {
                 .allowsHitTesting(!permission.hasPermission)
 
                 if !permission.isRequired {
-                    CalloutBox("Glacier can work in a limited mode without this permission.") {
+                    CalloutBox("Optional. Without it, Glacier shows app icons and names instead of the real item images.") {
                         Image(systemName: "checkmark.shield")
                             .foregroundStyle(.green)
                     }
