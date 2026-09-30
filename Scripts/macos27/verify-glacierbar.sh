@@ -7,16 +7,16 @@
 # Requirements: Ice installed with Scripts/install.sh, EXT_APP with a window on the
 # external display, MacOS27Layout set. Leave the mouse and keyboard alone.
 #
-# Usage: Scripts/macos27/verify-icebar.sh <ext-empty-x> <ext-empty-y> <builtin-empty-x> <builtin-empty-y>
+# Usage: Scripts/macos27/verify-glacierbar.sh <ext-empty-x> <ext-empty-y> <builtin-empty-x> <builtin-empty-y>
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 EXT_X="$1"; EXT_Y="$2"; BUILTIN_X="$3"; BUILTIN_Y="$4"
 EXT_APP="${EXT_APP:-Safari}"
-WORK="$(mktemp -d /tmp/ice-verify-icebar.XXXXXX)"
+WORK="$(mktemp -d /tmp/ice-verify-glacierbar.XXXXXX)"
 mkdir -p "$WORK/bin"
 swiftc -O "$ROOT/Scripts/macos27/pointer.swift" -o "$WORK/bin/pointer"
-swiftc -O "$ROOT/Scripts/macos27/icebar-ax.swift" -o "$WORK/bin/icebar-ax"
+swiftc -O "$ROOT/Scripts/macos27/glacierbar-ax.swift" -o "$WORK/bin/glacierbar-ax"
 swiftc -O "$ROOT/Scripts/macos27/ax-items.swift" -o "$WORK/bin/ax-items"
 
 quit_ice() {
@@ -27,7 +27,7 @@ front_app() {
     osascript -e 'tell application "System Events" to get name of first process whose frontmost is true'
 }
 as_bool() { case "$1" in 1|true|YES|yes) echo true ;; *) echo false ;; esac; }
-ORIGINAL_ICE_BAR=$(as_bool "$(defaults read com.jordanbaird.Ice UseIceBar 2>/dev/null || echo 1)")
+ORIGINAL_GLACIER_BAR=$(as_bool "$(defaults read com.jordanbaird.Ice UseGlacierBar 2>/dev/null || echo 1)")
 ORIGINAL_HOVER=$(as_bool "$(defaults read com.jordanbaird.Ice ShowOnHover 2>/dev/null || echo 1)")
 start_ice() {
     open "$HOME/Applications/Glacier.app"
@@ -37,14 +37,14 @@ start_ice() {
 # machine concealing nothing, and whatever was looked at next showed nothing worth seeing.
 restore() {
     quit_ice
-    defaults write com.jordanbaird.Ice UseIceBar -bool "$ORIGINAL_ICE_BAR"
+    defaults write com.jordanbaird.Ice UseGlacierBar -bool "$ORIGINAL_GLACIER_BAR"
     defaults write com.jordanbaird.Ice ShowOnHover -bool "$ORIGINAL_HOVER"
     start_ice
 }
 trap restore EXIT
 
 quit_ice
-defaults write com.jordanbaird.Ice UseIceBar -bool true
+defaults write com.jordanbaird.Ice UseGlacierBar -bool true
 defaults write com.jordanbaird.Ice ShowOnHover -bool true
 open "$HOME/Applications/Glacier.app"
 sleep 10
@@ -60,10 +60,10 @@ open_and_read() {
     local name="$1" x="$2" y="$3" away_y="$4"
     "$WORK/bin/pointer" glide "$x" "$away_y"; "$WORK/bin/pointer" hold 1
     "$WORK/bin/pointer" glide "$x" "$y"; "$WORK/bin/pointer" hold 2.5
-    "$WORK/bin/icebar-ax" > "$WORK/$name.txt"
+    "$WORK/bin/glacierbar-ax" > "$WORK/$name.txt"
     front_app > "$WORK/$name-front.txt"
     "$WORK/bin/pointer" glide "$x" "$away_y"; "$WORK/bin/pointer" hold 2
-    "$WORK/bin/icebar-ax" > "$WORK/$name-after.txt"
+    "$WORK/bin/glacierbar-ax" > "$WORK/$name-after.txt"
 }
 open_and_read ext "$EXT_X" "$EXT_Y" 540
 open_and_read builtin "$BUILTIN_X" "$BUILTIN_Y" 589

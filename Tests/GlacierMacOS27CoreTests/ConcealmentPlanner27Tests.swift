@@ -1,5 +1,5 @@
 import Testing
-@testable import IceMacOS27Core
+@testable import GlacierMacOS27Core
 
 @Suite("ConcealmentPlanner27")
 struct ConcealmentPlanner27Tests {

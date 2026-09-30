@@ -1,11 +1,11 @@
 //
-//  IceGroupBox.swift
+//  GlacierGroupBox.swift
 //  Glacier
 //
 
 import SwiftUI
 
-struct IceGroupBox<Header: View, Content: View, Footer: View>: View {
+struct GlacierGroupBox<Header: View, Content: View, Footer: View>: View {
     private let header: Header
     private let content: Content
     private let footer: Footer
@@ -28,7 +28,7 @@ struct IceGroupBox<Header: View, Content: View, Footer: View>: View {
     }
 
     init(
-        padding: EdgeInsets = .iceGroupBoxDefaultPadding,
+        padding: EdgeInsets = .glacierGroupBoxDefaultPadding,
         @ViewBuilder header: () -> Header,
         @ViewBuilder content: () -> Content,
         @ViewBuilder footer: () -> Footer
@@ -55,7 +55,7 @@ struct IceGroupBox<Header: View, Content: View, Footer: View>: View {
     }
 
     init(
-        padding: EdgeInsets = .iceGroupBoxDefaultPadding,
+        padding: EdgeInsets = .glacierGroupBoxDefaultPadding,
         @ViewBuilder content: () -> Content,
         @ViewBuilder footer: () -> Footer
     ) where Header == EmptyView {
@@ -83,7 +83,7 @@ struct IceGroupBox<Header: View, Content: View, Footer: View>: View {
     }
 
     init(
-        padding: EdgeInsets = .iceGroupBoxDefaultPadding,
+        padding: EdgeInsets = .glacierGroupBoxDefaultPadding,
         @ViewBuilder header: () -> Header,
         @ViewBuilder content: () -> Content
     ) where Footer == EmptyView {
@@ -111,7 +111,7 @@ struct IceGroupBox<Header: View, Content: View, Footer: View>: View {
     }
 
     init(
-        padding: EdgeInsets = .iceGroupBoxDefaultPadding,
+        padding: EdgeInsets = .glacierGroupBoxDefaultPadding,
         @ViewBuilder content: () -> Content
     ) where Header == EmptyView, Footer == EmptyView {
         self.init(padding: padding) {
@@ -138,7 +138,7 @@ struct IceGroupBox<Header: View, Content: View, Footer: View>: View {
 
     init(
         _ title: LocalizedStringKey,
-        padding: EdgeInsets = .iceGroupBoxDefaultPadding,
+        padding: EdgeInsets = .glacierGroupBoxDefaultPadding,
         @ViewBuilder content: () -> Content
     ) where Header == Text, Footer == EmptyView {
         self.init(padding: padding) {
@@ -191,6 +191,6 @@ struct IceGroupBox<Header: View, Content: View, Footer: View>: View {
 }
 
 extension EdgeInsets {
-    /// The default padding for an ``IceGroupBox``.
-    static let iceGroupBoxDefaultPadding = EdgeInsets(all: 12)
+    /// The default padding for an ``GlacierGroupBox``.
+    static let glacierGroupBoxDefaultPadding = EdgeInsets(all: 12)
 }

@@ -24,8 +24,8 @@ struct AdvancedSettingsPane: View {
     }
 
     var body: some View {
-        IceForm {
-            IceSection("Menu Bar Sections") {
+        GlacierForm {
+            GlacierSection("Menu Bar Sections") {
                 enableAlwaysHiddenSection
                 showAllSectionsOnUserDrag
                 // Ice's dividers are collapsed on macOS 27, so they have no style.
@@ -33,7 +33,7 @@ struct AdvancedSettingsPane: View {
                     sectionDividerStyle
                 }
             }
-            IceSection("Other") {
+            GlacierSection("Other") {
                 // macOS 27 folds the items that do not fit behind its own overflow button,
                 // and opens hidden items without moving them, so neither option applies.
                 if #unavailable(macOS 27.0) {
@@ -45,7 +45,7 @@ struct AdvancedSettingsPane: View {
                     tempShowInterval
                 }
             }
-            IceSection("Permissions") {
+            GlacierSection("Permissions") {
                 allPermissions
             }
         }
@@ -69,7 +69,7 @@ struct AdvancedSettingsPane: View {
 
     @ViewBuilder
     private var sectionDividerStyle: some View {
-        IcePicker("Section divider style", selection: $settings.sectionDividerStyle) {
+        GlacierPicker("Section divider style", selection: $settings.sectionDividerStyle) {
             ForEach(SectionDividerStyle.allCases) { style in
                 Text(style.localized).tag(style)
             }
@@ -115,7 +115,7 @@ struct AdvancedSettingsPane: View {
     @ViewBuilder
     private var showOnHoverDelay: some View {
         LabeledContent {
-            IceSlider(
+            GlacierSlider(
                 formattedToSeconds(settings.showOnHoverDelay),
                 value: $settings.showOnHoverDelay,
                 in: 0...1,
@@ -134,7 +134,7 @@ struct AdvancedSettingsPane: View {
     @ViewBuilder
     private var tempShowInterval: some View {
         LabeledContent {
-            IceSlider(
+            GlacierSlider(
                 formattedToSeconds(settings.tempShowInterval),
                 value: $settings.tempShowInterval,
                 in: 0...60,

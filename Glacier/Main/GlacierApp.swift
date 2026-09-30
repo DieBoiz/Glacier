@@ -1,12 +1,12 @@
 //
-//  IceApp.swift
+//  GlacierApp.swift
 //  Glacier
 //
 
 import SwiftUI
 
 @main
-struct IceApp: App {
+struct GlacierApp: App {
     @NSApplicationDelegateAdaptor var appDelegate: AppDelegate
 
     var body: some Scene {

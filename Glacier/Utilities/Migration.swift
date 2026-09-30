@@ -462,7 +462,7 @@ extension MigrationManager {
 private extension ControlItem.Identifier {
     var rawValue0_8_0: String {
         switch self {
-        case .visible: "IceIcon"
+        case .visible: "GlacierIcon"
         case .hidden: "HItem"
         case .alwaysHidden: "AHItem"
         }

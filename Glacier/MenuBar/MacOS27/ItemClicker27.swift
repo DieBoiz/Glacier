@@ -22,16 +22,16 @@ import OSLog
 enum ItemClicker27 {
     private static let logger = Logger(category: "ItemClicker27")
 
-    static func click(item: MenuBarItem, mouseButton: CGMouseButton, iceBarDisplayID: CGDirectDisplayID?, appState: AppState) async {
+    static func click(item: MenuBarItem, mouseButton: CGMouseButton, glacierBarDisplayID: CGDirectDisplayID?, appState: AppState) async {
         guard let bundleID = item.sourceApplication?.bundleIdentifier else {
             logger.error("No application for \(item.logString, privacy: .public)")
             return
         }
 
         if
-            ItemClick27.needsMenuBarActivation(activeDisplayID: Bridging.getActiveMenuBarDisplayID(), iceBarDisplayID: iceBarDisplayID),
-            let iceBarDisplayID,
-            let point = appState.hidEventManager.lastEmptyMenuBarPoint(for: iceBarDisplayID)
+            ItemClick27.needsMenuBarActivation(activeDisplayID: Bridging.getActiveMenuBarDisplayID(), glacierBarDisplayID: glacierBarDisplayID),
+            let glacierBarDisplayID,
+            let point = appState.hidEventManager.lastEmptyMenuBarPoint(for: glacierBarDisplayID)
         {
             postMenuBarActivationClick(at: point)
             try? await Task.sleep(for: .milliseconds(300))

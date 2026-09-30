@@ -1,11 +1,11 @@
 //
-//  IceMenu.swift
+//  GlacierMenu.swift
 //  Glacier
 //
 
 import SwiftUI
 
-struct IceMenu<Title: View, Label: View, Content: View>: View {
+struct GlacierMenu<Title: View, Label: View, Content: View>: View {
     private let title: Title
     private let label: Label
     private let content: Content

@@ -9,7 +9,7 @@ struct PermissionsWindow: Scene {
     @ObservedObject var appState: AppState
 
     var body: some Scene {
-        IceWindow(id: .permissions) {
+        GlacierWindow(id: .permissions) {
             PermissionsView()
                 .onWindowChange { window in
                     guard let window else {

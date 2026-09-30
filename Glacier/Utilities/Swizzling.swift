@@ -23,7 +23,7 @@ extension NSSplitViewItem {
     @objc private var swizzledCanCollapse: Bool {
         if
             let window = viewController.view.window,
-            window.identifier?.rawValue == IceWindowIdentifier.settings.rawValue
+            window.identifier?.rawValue == GlacierWindowIdentifier.settings.rawValue
         {
             return false
         }

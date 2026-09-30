@@ -24,7 +24,7 @@ struct MenuBarShapePicker: View {
 
     @ViewBuilder
     private var shapeKindPicker: some View {
-        IcePicker("Shape Kind", selection: $configuration.shapeKind) {
+        GlacierPicker("Shape Kind", selection: $configuration.shapeKind) {
             ForEach(MenuBarShapeKind.allCases) { shapeKind in
                 Text(shapeKind.localized).tag(shapeKind)
             }

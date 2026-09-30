@@ -1,6 +1,6 @@
 import CoreGraphics
 import Testing
-@testable import IceMacOS27Core
+@testable import GlacierMacOS27Core
 
 @Suite("ItemDrawing27")
 struct ItemDrawing27Tests {

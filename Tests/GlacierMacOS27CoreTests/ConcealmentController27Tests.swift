@@ -1,5 +1,5 @@
 import Testing
-@testable import IceMacOS27Core
+@testable import GlacierMacOS27Core
 
 /// Simulates MenuBarAgent: an item shows if any live assertion allows it.
 @MainActor

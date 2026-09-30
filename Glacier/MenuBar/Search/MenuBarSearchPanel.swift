@@ -391,7 +391,7 @@ private struct MenuBarSearchContentView: View {
             // Ice cannot move an item into view on macOS 27, so the item is clicked
             // the way the Ice Bar clicks it.
             if #available(macOS 27.0, *), let appState = itemManager.appState {
-                await ItemClicker27.click(item: item, mouseButton: .left, iceBarDisplayID: displayID, appState: appState)
+                await ItemClicker27.click(item: item, mouseButton: .left, glacierBarDisplayID: displayID, appState: appState)
                 return
             }
             if Bridging.isWindowOnScreen(item.windowID) {

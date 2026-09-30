@@ -1,5 +1,5 @@
 //
-//  IceBar.swift
+//  GlacierBar.swift
 //  Glacier
 //
 
@@ -7,14 +7,14 @@ import Combine
 import OSLog
 import SwiftUI
 
-// MARK: - IceBarPanel
+// MARK: - GlacierBarPanel
 
-final class IceBarPanel: NSPanel {
+final class GlacierBarPanel: NSPanel {
     /// The shared app state.
     private weak var appState: AppState?
 
     /// Manager for the Ice Bar's color.
-    private let colorManager = IceBarColorManager()
+    private let colorManager = GlacierBarColorManager()
 
     /// The currently displayed section.
     private(set) var currentSection: MenuBarSection.Name?
@@ -110,7 +110,7 @@ final class IceBarPanel: NSPanel {
             return
         }
 
-        func getOrigin(for iceBarLocation: IceBarLocation) -> CGPoint {
+        func getOrigin(for glacierBarLocation: GlacierBarLocation) -> CGPoint {
             let menuBarHeight = screen.getMenuBarHeight() ?? 0
             let originY = ((screen.frame.maxY - 1) - menuBarHeight) - frame.height
 
@@ -118,15 +118,15 @@ final class IceBarPanel: NSPanel {
                 CGPoint(x: screen.frame.maxX - frame.width, y: originY)
             }
 
-            switch iceBarLocation {
+            switch glacierBarLocation {
             case .dynamic:
                 if appState.hidEventManager.isMouseInsideEmptyMenuBarSpace(appState: appState, screen: screen) {
                     return getOrigin(for: .mousePointer)
                 }
-                return getOrigin(for: .iceIcon)
+                return getOrigin(for: .glacierIcon)
             case .mousePointer:
                 guard let location = MouseHelpers.locationAppKit else {
-                    return getOrigin(for: .iceIcon)
+                    return getOrigin(for: .glacierIcon)
                 }
 
                 let lowerBound = screen.frame.minX
@@ -137,7 +137,7 @@ final class IceBarPanel: NSPanel {
                 }
 
                 return CGPoint(x: (location.x - frame.width / 2).clamped(to: lowerBound...upperBound), y: originY)
-            case .iceIcon:
+            case .glacierIcon:
                 let lowerBound = screen.frame.minX
                 let upperBound = screen.frame.maxX - frame.width
 
@@ -155,7 +155,7 @@ final class IceBarPanel: NSPanel {
             }
         }
 
-        setFrameOrigin(getOrigin(for: appState.settings.general.iceBarLocation))
+        setFrameOrigin(getOrigin(for: appState.settings.general.glacierBarLocation))
     }
 
     /// Shows the panel on the given screen, displaying the given
@@ -171,16 +171,16 @@ final class IceBarPanel: NSPanel {
 
         // IMPORTANT: We must set the navigation state and current section
         // before updating the caches.
-        appState.navigationState.isIceBarPresented = true
+        appState.navigationState.isGlacierBarPresented = true
         currentSection = section
 
-        if #available(macOS 27.0, *), !Defaults.bool(forKey: .macOS27IceBarWaitsForRefresh) {
+        if #available(macOS 27.0, *), !Defaults.bool(forKey: .macOS27GlacierBarWaitsForRefresh) {
             // Waiting for this refresh cannot help the bar that is about to open on macOS 27:
             // the hidden items are concealed, so they can be neither read nor photographed,
             // and the bar shows the images stored while they were drawn. The wait only held
             // the bar back by a scan of every process and a capture of the display. The
             // refresh runs alongside instead, for the visible items and any still missing.
-            // The `MacOS27IceBarWaitsForRefresh` default brings the wait back, for measuring.
+            // The `MacOS27GlacierBarWaitsForRefresh` default brings the wait back, for measuring.
             Task {
                 await appState.itemManager.cacheItemsIfNeeded()
                 await appState.imageCache.updateCache()
@@ -194,7 +194,7 @@ final class IceBarPanel: NSPanel {
             do {
                 try await cacheTask.value
             } catch {
-                Logger.default.error("Cache update failed when showing IceBarPanel - \(error)")
+                Logger.default.error("Cache update failed when showing GlacierBarPanel - \(error)")
             }
 
             guard generation == showGeneration else {
@@ -202,7 +202,7 @@ final class IceBarPanel: NSPanel {
             }
         }
 
-        contentView = IceBarHostingView(
+        contentView = GlacierBarHostingView(
             appState: appState,
             colorManager: colorManager,
             screen: screen,
@@ -246,22 +246,22 @@ final class IceBarPanel: NSPanel {
         super.close()
         contentView = nil
         currentSection = nil
-        appState?.navigationState.isIceBarPresented = false
+        appState?.navigationState.isGlacierBarPresented = false
     }
 }
 
-// MARK: - IceBarHostingView
+// MARK: - GlacierBarHostingView
 
-private final class IceBarHostingView: NSHostingView<IceBarContentView> {
+private final class GlacierBarHostingView: NSHostingView<GlacierBarContentView> {
     override var safeAreaInsets: NSEdgeInsets { NSEdgeInsets() }
 
     init(
         appState: AppState,
-        colorManager: IceBarColorManager,
+        colorManager: GlacierBarColorManager,
         screen: NSScreen,
         section: MenuBarSection.Name
     ) {
-        let rootView = IceBarContentView(
+        let rootView = GlacierBarContentView(
             appState: appState,
             appearanceManager: appState.appearanceManager,
             colorManager: colorManager,
@@ -280,7 +280,7 @@ private final class IceBarHostingView: NSHostingView<IceBarContentView> {
     }
 
     @available(*, unavailable)
-    required init(rootView: IceBarContentView) {
+    required init(rootView: GlacierBarContentView) {
         fatalError("init(rootView:) has not been implemented")
     }
 
@@ -289,14 +289,14 @@ private final class IceBarHostingView: NSHostingView<IceBarContentView> {
     }
 }
 
-// MARK: - IceBarContentView
+// MARK: - GlacierBarContentView
 
-private struct IceBarContentView: View {
+private struct GlacierBarContentView: View {
     // Not observed, as the app state forwards changes from all of its
     // submodels. The ones this view depends on are observed directly.
     let appState: AppState
     @ObservedObject var appearanceManager: MenuBarAppearanceManager
-    @ObservedObject var colorManager: IceBarColorManager
+    @ObservedObject var colorManager: GlacierBarColorManager
     @ObservedObject var itemManager: MenuBarItemManager
     @ObservedObject var imageCache: MenuBarItemImageCache
     @ObservedObject var menuBarManager: MenuBarManager
@@ -411,7 +411,7 @@ private struct IceBarContentView: View {
             ScrollView(.horizontal) {
                 HStack(spacing: 0) {
                     ForEach(items, id: \.windowID) { item in
-                        IceBarItemView(
+                        GlacierBarItemView(
                             image: imageCache.images[item.tag],
                             itemManager: itemManager,
                             menuBarManager: menuBarManager,
@@ -431,9 +431,9 @@ private struct IceBarContentView: View {
     }
 }
 
-// MARK: - IceBarItemView
+// MARK: - GlacierBarItemView
 
-private struct IceBarItemView: View {
+private struct GlacierBarItemView: View {
     // The managers are only used by the click actions, so they aren't
     // observed. The content view passes in the image.
     let image: MenuBarItemImageCache.CapturedImage?
@@ -448,12 +448,12 @@ private struct IceBarItemView: View {
             guard let itemManager, let menuBarManager else {
                 return
             }
-            let iceBarDisplayID = menuBarManager.iceBarPanel.screen?.displayID
+            let glacierBarDisplayID = menuBarManager.glacierBarPanel.screen?.displayID
             menuBarManager.section(withName: section)?.hide()
             Task {
                 try? await Task.sleep(for: .milliseconds(25))
                 if #available(macOS 27.0, *), let appState = itemManager.appState {
-                    await ItemClicker27.click(item: item, mouseButton: mouseButton, iceBarDisplayID: iceBarDisplayID, appState: appState)
+                    await ItemClicker27.click(item: item, mouseButton: mouseButton, glacierBarDisplayID: glacierBarDisplayID, appState: appState)
                     return
                 }
                 if Bridging.isWindowOnScreen(item.windowID) {
@@ -478,7 +478,7 @@ private struct IceBarItemView: View {
             Image(nsImage: image.nsImage)
                 .contentShape(Rectangle())
                 .overlay {
-                    IceBarItemClickView(
+                    GlacierBarItemClickView(
                         item: item,
                         leftClickAction: leftClickAction,
                         rightClickAction: rightClickAction
@@ -491,9 +491,9 @@ private struct IceBarItemView: View {
     }
 }
 
-// MARK: - IceBarItemClickView
+// MARK: - GlacierBarItemClickView
 
-private struct IceBarItemClickView: NSViewRepresentable {
+private struct GlacierBarItemClickView: NSViewRepresentable {
     private final class Represented: NSView {
         let item: MenuBarItem
 

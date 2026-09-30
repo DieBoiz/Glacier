@@ -60,7 +60,7 @@ struct PermissionsView: View {
 
     @ViewBuilder
     private var explanationBox: some View {
-        IceSection {
+        GlacierSection {
             VStack {
                 Text("Ice needs your permission to manage the menu bar.")
                     .fontWeight(.medium)
@@ -128,7 +128,7 @@ struct PermissionsView: View {
 
     @ViewBuilder
     private func permissionBox(_ permission: Permission) -> some View {
-        IceSection {
+        GlacierSection {
             VStack(spacing: 12) {
                 Text(permission.title)
                     .font(.title.weight(.medium))

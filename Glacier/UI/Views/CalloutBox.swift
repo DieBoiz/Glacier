@@ -121,7 +121,7 @@ struct CalloutBox<Content: View, Icon: View, ForegroundStyle: ShapeStyle>: View 
     }
 
     var body: some View {
-        IceGroupBox {
+        GlacierGroupBox {
             Label {
                 content
             } icon: {

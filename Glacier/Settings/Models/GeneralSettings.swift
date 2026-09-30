@@ -14,25 +14,25 @@ import SwiftUI
 final class GeneralSettings: ObservableObject {
     /// A Boolean value that indicates whether the Ice icon
     /// should be shown.
-    @Published var showIceIcon = true
+    @Published var showGlacierIcon = true
 
     /// An icon to show in the menu bar, with a different image
     /// for when items are visible or hidden.
-    @Published var iceIcon: ControlItemImageSet = .defaultIceIcon
+    @Published var glacierIcon: ControlItemImageSet = .defaultGlacierIcon
 
     /// The last user-selected custom Ice icon.
-    @Published var lastCustomIceIcon: ControlItemImageSet?
+    @Published var lastCustomGlacierIcon: ControlItemImageSet?
 
     /// A Boolean value that indicates whether custom Ice icons
     /// should be rendered as template images.
-    @Published var customIceIconIsTemplate = false
+    @Published var customGlacierIconIsTemplate = false
 
     /// A Boolean value that indicates whether to show hidden items
     /// in a separate bar below the menu bar.
-    @Published var useIceBar = false
+    @Published var useGlacierBar = false
 
     /// The location where the Ice Bar appears.
-    @Published var iceBarLocation: IceBarLocation = .dynamic
+    @Published var glacierBarLocation: GlacierBarLocation = .dynamic
 
     /// A Boolean value that indicates whether the hidden section
     /// should be shown when the mouse pointer clicks in an empty
@@ -84,9 +84,9 @@ final class GeneralSettings: ObservableObject {
 
     /// Loads the model's initial state.
     private func loadInitialState() {
-        Defaults.ifPresent(key: .showIceIcon, assign: &showIceIcon)
-        Defaults.ifPresent(key: .customIceIconIsTemplate, assign: &customIceIconIsTemplate)
-        Defaults.ifPresent(key: .useIceBar, assign: &useIceBar)
+        Defaults.ifPresent(key: .showGlacierIcon, assign: &showGlacierIcon)
+        Defaults.ifPresent(key: .customGlacierIconIsTemplate, assign: &customGlacierIconIsTemplate)
+        Defaults.ifPresent(key: .useGlacierBar, assign: &useGlacierBar)
         Defaults.ifPresent(key: .showOnClick, assign: &showOnClick)
         Defaults.ifPresent(key: .showOnHover, assign: &showOnHover)
         Defaults.ifPresent(key: .showOnScroll, assign: &showOnScroll)
@@ -94,9 +94,9 @@ final class GeneralSettings: ObservableObject {
         Defaults.ifPresent(key: .autoRehide, assign: &autoRehide)
         Defaults.ifPresent(key: .rehideInterval, assign: &rehideInterval)
 
-        Defaults.ifPresent(key: .iceBarLocation) { rawValue in
-            if let location = IceBarLocation(rawValue: rawValue) {
-                iceBarLocation = location
+        Defaults.ifPresent(key: .glacierBarLocation) { rawValue in
+            if let location = GlacierBarLocation(rawValue: rawValue) {
+                glacierBarLocation = location
             }
         }
         Defaults.ifPresent(key: .rehideStrategy) { rawValue in
@@ -105,14 +105,14 @@ final class GeneralSettings: ObservableObject {
             }
         }
 
-        if let data = Defaults.data(forKey: .iceIcon) {
+        if let data = Defaults.data(forKey: .glacierIcon) {
             do {
-                iceIcon = try decoder.decode(ControlItemImageSet.self, from: data)
+                glacierIcon = try decoder.decode(ControlItemImageSet.self, from: data)
             } catch {
                 Logger.serialization.error("Error decoding Ice icon: \(error, privacy: .public)")
             }
-            if case .custom = iceIcon.name {
-                lastCustomIceIcon = iceIcon
+            if case .custom = glacierIcon.name {
+                lastCustomGlacierIcon = glacierIcon
             }
         }
     }
@@ -121,49 +121,49 @@ final class GeneralSettings: ObservableObject {
     private func configureCancellables() {
         var c = Set<AnyCancellable>()
 
-        $showIceIcon
+        $showGlacierIcon
             .receive(on: DispatchQueue.main)
-            .sink { showIceIcon in
-                Defaults.set(showIceIcon, forKey: .showIceIcon)
+            .sink { showGlacierIcon in
+                Defaults.set(showGlacierIcon, forKey: .showGlacierIcon)
             }
             .store(in: &c)
 
-        $iceIcon
+        $glacierIcon
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] iceIcon in
+            .sink { [weak self] glacierIcon in
                 guard let self else {
                     return
                 }
-                if case .custom = iceIcon.name {
-                    lastCustomIceIcon = iceIcon
+                if case .custom = glacierIcon.name {
+                    lastCustomGlacierIcon = glacierIcon
                 }
                 do {
-                    let data = try encoder.encode(iceIcon)
-                    Defaults.set(data, forKey: .iceIcon)
+                    let data = try encoder.encode(glacierIcon)
+                    Defaults.set(data, forKey: .glacierIcon)
                 } catch {
                     Logger.serialization.error("Error encoding Ice icon: \(error, privacy: .public)")
                 }
             }
             .store(in: &c)
 
-        $customIceIconIsTemplate
+        $customGlacierIconIsTemplate
             .receive(on: DispatchQueue.main)
             .sink { isTemplate in
-                Defaults.set(isTemplate, forKey: .customIceIconIsTemplate)
+                Defaults.set(isTemplate, forKey: .customGlacierIconIsTemplate)
             }
             .store(in: &c)
 
-        $useIceBar
+        $useGlacierBar
             .receive(on: DispatchQueue.main)
-            .sink { useIceBar in
-                Defaults.set(useIceBar, forKey: .useIceBar)
+            .sink { useGlacierBar in
+                Defaults.set(useGlacierBar, forKey: .useGlacierBar)
             }
             .store(in: &c)
 
-        $iceBarLocation
+        $glacierBarLocation
             .receive(on: DispatchQueue.main)
             .sink { location in
-                Defaults.set(location.rawValue, forKey: .iceBarLocation)
+                Defaults.set(location.rawValue, forKey: .glacierBarLocation)
             }
             .store(in: &c)
 

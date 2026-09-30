@@ -12,7 +12,7 @@ enum HotkeyAction: String, Codable, CaseIterable {
     case searchMenuBarItems = "SearchMenuBarItems"
 
     // Other
-    case enableIceBar = "EnableIceBar"
+    case enableGlacierBar = "EnableGlacierBar"
     case toggleApplicationMenus = "ToggleApplicationMenus"
 
     @MainActor
@@ -38,8 +38,8 @@ enum HotkeyAction: String, Codable, CaseIterable {
             }
         case .searchMenuBarItems:
             appState.menuBarManager.searchPanel.toggle()
-        case .enableIceBar:
-            appState.settings.general.useIceBar.toggle()
+        case .enableGlacierBar:
+            appState.settings.general.useGlacierBar.toggle()
         case .toggleApplicationMenus:
             appState.menuBarManager.toggleApplicationMenus()
         }

@@ -138,11 +138,11 @@ enum Defaults {
 extension Defaults {
     enum Key: String {
         // MARK: General Settings
-        case showIceIcon = "ShowIceIcon"
-        case iceIcon = "IceIcon"
-        case customIceIconIsTemplate = "CustomIceIconIsTemplate"
-        case useIceBar = "UseIceBar"
-        case iceBarLocation = "IceBarLocation"
+        case showGlacierIcon = "ShowGlacierIcon"
+        case glacierIcon = "GlacierIcon"
+        case customGlacierIconIsTemplate = "CustomGlacierIconIsTemplate"
+        case useGlacierBar = "UseGlacierBar"
+        case glacierBarLocation = "GlacierBarLocation"
         case showOnClick = "ShowOnClick"
         case showOnHover = "ShowOnHover"
         case showOnScroll = "ShowOnScroll"
@@ -169,7 +169,7 @@ extension Defaults {
         // MARK: macOS 27
         case macOS27Layout = "MacOS27Layout"
         case macOS27ClickRestoreDelay = "MacOS27ClickRestoreDelay"
-        case macOS27IceBarWaitsForRefresh = "MacOS27IceBarWaitsForRefresh"
+        case macOS27GlacierBarWaitsForRefresh = "MacOS27GlacierBarWaitsForRefresh"
 
         // MARK: Migration
         case hasMigrated0_8_0 = "hasMigrated0_8_0"

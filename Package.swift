@@ -5,18 +5,18 @@ import PackageDescription
 // unit tested with `swift test`. The same files are compiled into the Ice app
 // through the synchronized `Ice` folder group.
 let package = Package(
-    name: "IceMacOS27Core",
+    name: "GlacierMacOS27Core",
     platforms: [.macOS(.v14)],
     targets: [
         .target(
-            name: "IceMacOS27Core",
+            name: "GlacierMacOS27Core",
             path: "Glacier/MenuBar/MacOS27/Core",
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .testTarget(
-            name: "IceMacOS27CoreTests",
-            dependencies: ["IceMacOS27Core"],
-            path: "Tests/IceMacOS27CoreTests",
+            name: "GlacierMacOS27CoreTests",
+            dependencies: ["GlacierMacOS27Core"],
+            path: "Tests/GlacierMacOS27CoreTests",
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
     ]

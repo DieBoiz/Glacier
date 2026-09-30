@@ -1,11 +1,11 @@
 //
-//  IceForm.swift
+//  GlacierForm.swift
 //  Glacier
 //
 
 import SwiftUI
 
-struct IceForm<Content: View>: View {
+struct GlacierForm<Content: View>: View {
     @State private var contentFrame = CGRect.zero
 
     private let alignment: HorizontalAlignment
@@ -15,8 +15,8 @@ struct IceForm<Content: View>: View {
 
     init(
         alignment: HorizontalAlignment = .center,
-        padding: EdgeInsets = .iceFormDefaultPadding,
-        spacing: CGFloat = .iceFormDefaultSpacing,
+        padding: EdgeInsets = .glacierFormDefaultPadding,
+        spacing: CGFloat = .glacierFormDefaultSpacing,
         @ViewBuilder content: () -> Content
     ) {
         self.alignment = alignment
@@ -28,7 +28,7 @@ struct IceForm<Content: View>: View {
     init(
         alignment: HorizontalAlignment = .center,
         padding: CGFloat,
-        spacing: CGFloat = .iceFormDefaultSpacing,
+        spacing: CGFloat = .glacierFormDefaultSpacing,
         @ViewBuilder content: () -> Content
     ) {
         self.init(
@@ -61,15 +61,15 @@ struct IceForm<Content: View>: View {
     private var contentLayout: some View {
         VStack(alignment: alignment, spacing: spacing) {
             content
-                .labeledContentStyle(IceFormLabeledContentStyle())
-                .toggleStyle(IceFormToggleStyle())
+                .labeledContentStyle(GlacierFormLabeledContentStyle())
+                .toggleStyle(GlacierFormToggleStyle())
         }
         .padding(padding)
         .onFrameChange(update: $contentFrame)
     }
 }
 
-private struct IceFormLabeledContentStyle: LabeledContentStyle {
+private struct GlacierFormLabeledContentStyle: LabeledContentStyle {
     func makeBody(configuration: Configuration) -> some View {
         LabeledContent {
             configuration.content
@@ -82,7 +82,7 @@ private struct IceFormLabeledContentStyle: LabeledContentStyle {
     }
 }
 
-private struct IceFormToggleStyle: ToggleStyle {
+private struct GlacierFormToggleStyle: ToggleStyle {
     func makeBody(configuration: Configuration) -> some View {
         Toggle(configuration)
             .toggleStyle(.switch)
@@ -91,8 +91,8 @@ private struct IceFormToggleStyle: ToggleStyle {
 }
 
 extension EdgeInsets {
-    /// The default padding for an ``IceForm``.
-    static let iceFormDefaultPadding: EdgeInsets = {
+    /// The default padding for an ``GlacierForm``.
+    static let glacierFormDefaultPadding: EdgeInsets = {
         var insets = EdgeInsets(all: 20)
         if #available(macOS 26.0, *) {
             insets.top = 0
@@ -102,6 +102,6 @@ extension EdgeInsets {
 }
 
 extension CGFloat {
-    /// The default spacing for an ``IceForm``.
-    static let iceFormDefaultSpacing: CGFloat = 10
+    /// The default spacing for an ``GlacierForm``.
+    static let glacierFormDefaultSpacing: CGFloat = 10
 }

@@ -1,12 +1,12 @@
 //
-//  IceBarLocation.swift
+//  GlacierBarLocation.swift
 //  Glacier
 //
 
 import SwiftUI
 
 /// Locations where the Ice Bar can appear.
-enum IceBarLocation: Int, CaseIterable, Identifiable {
+enum GlacierBarLocation: Int, CaseIterable, Identifiable {
     /// The Ice Bar will appear in different locations based on context.
     case dynamic = 0
 
@@ -14,7 +14,7 @@ enum IceBarLocation: Int, CaseIterable, Identifiable {
     case mousePointer = 1
 
     /// The Ice Bar will appear centered below the Ice icon.
-    case iceIcon = 2
+    case glacierIcon = 2
 
     var id: Int { rawValue }
 
@@ -23,7 +23,7 @@ enum IceBarLocation: Int, CaseIterable, Identifiable {
         switch self {
         case .dynamic: "Dynamic"
         case .mousePointer: "Mouse pointer"
-        case .iceIcon: "Ice icon"
+        case .glacierIcon: "Ice icon"
         }
     }
 }

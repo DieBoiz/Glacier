@@ -26,7 +26,7 @@ done
 # again carried any earlier damage forward: a second run saved the already-changed layout
 # as its "before" and restored that, which is how a real layout was lost once.
 as_bool() { case "$1" in 1|true|YES|yes) echo true ;; *) echo false ;; esac; }
-ORIGINAL_ICE_BAR=$(as_bool "$(defaults read com.jordanbaird.Ice UseIceBar 2>/dev/null || echo 1)")
+ORIGINAL_GLACIER_BAR=$(as_bool "$(defaults read com.jordanbaird.Ice UseGlacierBar 2>/dev/null || echo 1)")
 LAYOUT_BEFORE=$(defaults read com.jordanbaird.Ice MacOS27Layout 2>/dev/null || echo "{}")
 
 quit_ice() {
@@ -47,7 +47,7 @@ start_ice() {
 restore() {
     quit_ice
     defaults write com.jordanbaird.Ice MacOS27Layout "$LAYOUT_BEFORE"
-    defaults write com.jordanbaird.Ice UseIceBar -bool "$ORIGINAL_ICE_BAR"
+    defaults write com.jordanbaird.Ice UseGlacierBar -bool "$ORIGINAL_GLACIER_BAR"
     local after
     after=$(defaults read com.jordanbaird.Ice MacOS27Layout 2>/dev/null || echo "{}")
     if [ "$after" = "$LAYOUT_BEFORE" ]; then
@@ -61,7 +61,7 @@ restore() {
 trap restore EXIT
 
 quit_ice
-defaults write com.jordanbaird.Ice UseIceBar -bool true
+defaults write com.jordanbaird.Ice UseGlacierBar -bool true
 open "$HOME/Applications/Glacier.app"
 sleep 10
 activate "$EXT_APP"

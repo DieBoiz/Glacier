@@ -361,7 +361,7 @@ final class Concealer27 {
             // Everything is drawn while the layout window is open, so every item can be photographed.
             return .allRevealed
         }
-        if appState.settings.general.useIceBar {
+        if appState.settings.general.useGlacierBar {
             // The Ice Bar shows hidden items in its own panel, so the bar stays concealed.
             return .allHidden
         }

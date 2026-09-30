@@ -10,16 +10,16 @@ struct HotkeysSettingsPane: View {
     @ObservedObject var settings: HotkeysSettings
 
     var body: some View {
-        IceForm {
-            IceSection("Menu Bar Sections") {
+        GlacierForm {
+            GlacierSection("Menu Bar Sections") {
                 hotkeyRecorder(forSection: .hidden)
                 hotkeyRecorder(forSection: .alwaysHidden)
             }
-            IceSection("Menu Bar Items") {
+            GlacierSection("Menu Bar Items") {
                 hotkeyRecorder(forAction: .searchMenuBarItems)
             }
-            IceSection("Other") {
-                hotkeyRecorder(forAction: .enableIceBar)
+            GlacierSection("Other") {
+                hotkeyRecorder(forAction: .enableGlacierBar)
                 hotkeyRecorder(forAction: .toggleApplicationMenus)
             }
         }
@@ -36,7 +36,7 @@ struct HotkeysSettingsPane: View {
                     Text("Toggle the always-hidden section")
                 case .searchMenuBarItems:
                     Text("Search menu bar items")
-                case .enableIceBar:
+                case .enableGlacierBar:
                     Text("Enable the Ice Bar")
                 case .toggleApplicationMenus:
                     Text("Toggle application menus")

@@ -249,7 +249,7 @@ final class AppState: ObservableObject {
     }
 
     /// Returns a publisher for the window with the given identifier.
-    func publisherForWindow(_ id: IceWindowIdentifier) -> some Publisher<NSWindow?, Never> {
+    func publisherForWindow(_ id: GlacierWindowIdentifier) -> some Publisher<NSWindow?, Never> {
         // SwiftUI can assign the identifier after adding the window to
         // the app, so observe the identifiers of the current windows too.
         // Switching to the latest set cancels the observers of the old one.
@@ -267,7 +267,7 @@ final class AppState: ObservableObject {
     }
 
     /// Opens the window with the given identifier.
-    func openWindow(_ id: IceWindowIdentifier) {
+    func openWindow(_ id: GlacierWindowIdentifier) {
         // Async prevents conflicts with SwiftUI.
         DispatchQueue.main.async {
             self.logger.debug("Opening window with id: \(id, privacy: .public)")
@@ -276,7 +276,7 @@ final class AppState: ObservableObject {
     }
 
     /// Dismisses the window with the given identifier.
-    func dismissWindow(_ id: IceWindowIdentifier) {
+    func dismissWindow(_ id: GlacierWindowIdentifier) {
         // Async prevents conflicts with SwiftUI.
         DispatchQueue.main.async {
             self.logger.debug("Dismissing window with id: \(id, privacy: .public)")

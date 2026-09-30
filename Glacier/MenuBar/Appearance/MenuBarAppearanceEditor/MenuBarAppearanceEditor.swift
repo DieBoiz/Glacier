@@ -53,7 +53,7 @@ struct MenuBarAppearanceEditor: View {
 
     @ViewBuilder
     private var mainForm: some View {
-        IceForm {
+        GlacierForm {
             if
                 case .settings = location,
                 appState.settings.advanced.enableSecondaryContextMenu
@@ -63,7 +63,7 @@ struct MenuBarAppearanceEditor: View {
                     systemImage: "lightbulb"
                 )
             }
-            IceSection {
+            GlacierSection {
                 isDynamicToggle
             }
             if appearanceManager.configuration.isDynamic {
@@ -72,7 +72,7 @@ struct MenuBarAppearanceEditor: View {
             } else {
                 StaticPartialEditor(configuration: $appearanceManager.configuration)
             }
-            IceSection("Menu Bar Shape") {
+            GlacierSection("Menu Bar Shape") {
                 shapePicker
                 isInset
             }
@@ -141,11 +141,11 @@ private struct UnlabeledPartialEditor: View {
     @Binding var configuration: MenuBarAppearancePartialConfiguration
 
     var body: some View {
-        IceSection {
+        GlacierSection {
             tintPicker
             shadowToggle
         }
-        IceSection {
+        GlacierSection {
             borderToggle
             borderColor
             borderWidth
@@ -156,7 +156,7 @@ private struct UnlabeledPartialEditor: View {
     private var tintPicker: some View {
         LabeledContent("Tint") {
             HStack {
-                IcePicker("Tint", selection: $configuration.tintKind) {
+                GlacierPicker("Tint", selection: $configuration.tintKind) {
                     ForEach(MenuBarTintKind.allCases) { tintKind in
                         Text(tintKind.localized).tag(tintKind)
                     }
@@ -174,7 +174,7 @@ private struct UnlabeledPartialEditor: View {
                     )
                     .labelsHidden()
                 case .gradient:
-                    IceGradientPicker(
+                    GlacierGradientPicker(
                         configuration.tintKind.localized,
                         gradient: $configuration.tintGradient,
                         supportsOpacity: false
@@ -210,7 +210,7 @@ private struct UnlabeledPartialEditor: View {
     @ViewBuilder
     private var borderWidth: some View {
         if configuration.hasBorder {
-            IcePicker(
+            GlacierPicker(
                 "Border Width",
                 selection: $configuration.borderWidth
             ) {
@@ -230,7 +230,7 @@ private struct LabeledPartialEditor: View {
     let appearance: SystemAppearance
 
     var body: some View {
-        IceSection(options: .plain) {
+        GlacierSection(options: .plain) {
             labelStack
         } content: {
             partialEditor

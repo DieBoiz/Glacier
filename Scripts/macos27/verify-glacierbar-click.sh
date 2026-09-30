@@ -6,10 +6,10 @@
 #
 # Requirements: Ice installed with Scripts/install.sh, EXT_APP with a window on the
 # external display. CLICK_LABEL names a hidden item whose click opens a menu that Escape
-# closes (list the labels with icebar-ax while the Ice Bar is open). Leave the mouse and
+# closes (list the labels with glacierbar-ax while the Ice Bar is open). Leave the mouse and
 # keyboard alone.
 #
-# Usage: Scripts/macos27/verify-icebar-click.sh <ext-empty-x> <ext-empty-y> <builtin-empty-x> <builtin-empty-y>
+# Usage: Scripts/macos27/verify-glacierbar-click.sh <ext-empty-x> <ext-empty-y> <builtin-empty-x> <builtin-empty-y>
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -17,9 +17,9 @@ EXT_X="$1"; EXT_Y="$2"; BUILTIN_X="$3"; BUILTIN_Y="$4"
 EXT_APP="${EXT_APP:-Safari}"
 CLICK_LABEL="${CLICK_LABEL:-Kiro}"
 REGION="700,0,1220,34"
-WORK="$(mktemp -d /tmp/ice-verify-icebar-click.XXXXXX)"
+WORK="$(mktemp -d /tmp/ice-verify-glacierbar-click.XXXXXX)"
 mkdir -p "$WORK/bin" "$WORK/steady"
-for tool in pointer icebar-ax new-windows input analyze-frames; do
+for tool in pointer glacierbar-ax new-windows input analyze-frames; do
     swiftc -O "$ROOT/Scripts/macos27/$tool.swift" -o "$WORK/bin/$tool"
 done
 
@@ -33,7 +33,7 @@ external_leftmost() {
     "$WORK/bin/analyze-frames" "$WORK/steady" 700 1220 | awk -v n="$1" '$1 == n { print $2 }'
 }
 as_bool() { case "$1" in 1|true|YES|yes) echo true ;; *) echo false ;; esac; }
-ORIGINAL_ICE_BAR=$(as_bool "$(defaults read com.jordanbaird.Ice UseIceBar 2>/dev/null || echo 1)")
+ORIGINAL_GLACIER_BAR=$(as_bool "$(defaults read com.jordanbaird.Ice UseGlacierBar 2>/dev/null || echo 1)")
 ORIGINAL_HOVER=$(as_bool "$(defaults read com.jordanbaird.Ice ShowOnHover 2>/dev/null || echo 1)")
 start_ice() {
     open "$HOME/Applications/Glacier.app"
@@ -44,14 +44,14 @@ start_ice() {
 restore() {
     "$WORK/bin/input" escape || true
     quit_ice
-    defaults write com.jordanbaird.Ice UseIceBar -bool "$ORIGINAL_ICE_BAR"
+    defaults write com.jordanbaird.Ice UseGlacierBar -bool "$ORIGINAL_GLACIER_BAR"
     defaults write com.jordanbaird.Ice ShowOnHover -bool "$ORIGINAL_HOVER"
     start_ice
 }
 trap restore EXIT
 
 quit_ice
-defaults write com.jordanbaird.Ice UseIceBar -bool true
+defaults write com.jordanbaird.Ice UseGlacierBar -bool true
 defaults write com.jordanbaird.Ice ShowOnHover -bool true
 open "$HOME/Applications/Glacier.app"
 sleep 10
@@ -66,10 +66,10 @@ click_on() {
     activate "$EXT_APP"
     "$WORK/bin/pointer" glide "$x" "$away_y"; "$WORK/bin/pointer" hold 1
     "$WORK/bin/pointer" glide "$x" "$y"; "$WORK/bin/pointer" hold 2.5
-    "$WORK/bin/icebar-ax" > "$WORK/$name-icebar.txt"
+    "$WORK/bin/glacierbar-ax" > "$WORK/$name-glacierbar.txt"
     local target
-    target=$(grep '^item ' "$WORK/$name-icebar.txt" | grep -F "$CLICK_LABEL" | head -1 || true)
-    [ -n "$target" ] || target=$(grep '^item ' "$WORK/$name-icebar.txt" | head -1 || true)
+    target=$(grep '^item ' "$WORK/$name-glacierbar.txt" | grep -F "$CLICK_LABEL" | head -1 || true)
+    [ -n "$target" ] || target=$(grep '^item ' "$WORK/$name-glacierbar.txt" | head -1 || true)
     if [ -z "$target" ]; then
         echo "no item in the $name Ice Bar" > "$WORK/$name-windows.txt"
         return

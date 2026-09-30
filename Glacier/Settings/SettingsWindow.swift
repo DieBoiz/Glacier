@@ -13,7 +13,7 @@ struct SettingsWindow: Scene {
     @StateObject private var model = SettingsWindowModel()
 
     var body: some Scene {
-        IceWindow(id: .settings) {
+        GlacierWindow(id: .settings) {
             SettingsView(navigationState: appState.navigationState)
                 .onWindowChange { window in
                     model.observeWindowToolbar(window)

@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 import Testing
-@testable import IceMacOS27Core
+@testable import GlacierMacOS27Core
 
 @Suite("Temporary allowances")
 struct TemporaryAllowance27Tests {
@@ -138,17 +138,17 @@ struct PhotoSchedule27Tests {
 struct ItemClick27Tests {
     @Test("No activation when the Ice Bar is on the active menu bar's display")
     func sameDisplay() {
-        #expect(!ItemClick27.needsMenuBarActivation(activeDisplayID: 3, iceBarDisplayID: 3))
+        #expect(!ItemClick27.needsMenuBarActivation(activeDisplayID: 3, glacierBarDisplayID: 3))
     }
 
     @Test("Activation when the Ice Bar is on another display")
     func otherDisplay() {
-        #expect(ItemClick27.needsMenuBarActivation(activeDisplayID: 3, iceBarDisplayID: 1))
+        #expect(ItemClick27.needsMenuBarActivation(activeDisplayID: 3, glacierBarDisplayID: 1))
     }
 
     @Test("No activation without a known Ice Bar display")
     func unknownDisplay() {
-        #expect(!ItemClick27.needsMenuBarActivation(activeDisplayID: 3, iceBarDisplayID: nil))
+        #expect(!ItemClick27.needsMenuBarActivation(activeDisplayID: 3, glacierBarDisplayID: nil))
     }
 
     @Test("A new window of the item's process means its interface is open")

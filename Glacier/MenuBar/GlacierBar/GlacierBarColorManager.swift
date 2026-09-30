@@ -1,30 +1,30 @@
 //
-//  IceBarColorManager.swift
+//  GlacierBarColorManager.swift
 //  Glacier
 //
 
 import Combine
 import SwiftUI
 
-final class IceBarColorManager: ObservableObject {
+final class GlacierBarColorManager: ObservableObject {
     @Published private(set) var colorInfo: MenuBarAverageColorInfo?
 
-    private weak var iceBarPanel: IceBarPanel?
+    private weak var glacierBarPanel: GlacierBarPanel?
 
     private var windowImage: CGImage?
 
     private var cancellables = Set<AnyCancellable>()
 
-    func performSetup(with iceBarPanel: IceBarPanel) {
-        self.iceBarPanel = iceBarPanel
+    func performSetup(with glacierBarPanel: GlacierBarPanel) {
+        self.glacierBarPanel = glacierBarPanel
         configureCancellables()
     }
 
     private func configureCancellables() {
         var c = Set<AnyCancellable>()
 
-        if let iceBarPanel {
-            iceBarPanel.publisher(for: \.screen)
+        if let glacierBarPanel {
+            glacierBarPanel.publisher(for: \.screen)
                 .receive(on: DispatchQueue.main)
                 .sink { [weak self] screen in
                     guard
@@ -38,30 +38,30 @@ final class IceBarColorManager: ObservableObject {
                 }
                 .store(in: &c)
 
-            iceBarPanel.publisher(for: \.isVisible)
+            glacierBarPanel.publisher(for: \.isVisible)
                 .receive(on: DispatchQueue.main)
-                .sink { [weak self, weak iceBarPanel] isVisible in
+                .sink { [weak self, weak glacierBarPanel] isVisible in
                     guard
                         let self,
-                        let iceBarPanel,
-                        let screen = iceBarPanel.screen,
+                        let glacierBarPanel,
+                        let screen = glacierBarPanel.screen,
                         isVisible,
                         screen == .main
                     else {
                         return
                     }
-                    updateColorInfo(with: iceBarPanel.frame, screen: screen)
+                    updateColorInfo(with: glacierBarPanel.frame, screen: screen)
                 }
                 .store(in: &c)
 
-            iceBarPanel.publisher(for: \.frame)
+            glacierBarPanel.publisher(for: \.frame)
                 .throttle(for: 0.1, scheduler: DispatchQueue.main, latest: true)
-                .sink { [weak self, weak iceBarPanel] frame in
+                .sink { [weak self, weak glacierBarPanel] frame in
                     guard
                         let self,
-                        let iceBarPanel,
-                        let screen = iceBarPanel.screen,
-                        iceBarPanel.isVisible,
+                        let glacierBarPanel,
+                        let screen = glacierBarPanel.screen,
+                        glacierBarPanel.isVisible,
                         screen == .main
                     else {
                         return
@@ -84,7 +84,7 @@ final class IceBarColorManager: ObservableObject {
                     .replace(with: ()),
                 // Only poll while the panel is visible. Showing the panel
                 // updates the color anyway.
-                iceBarPanel.publisher(for: \.isVisible)
+                glacierBarPanel.publisher(for: \.isVisible)
                     .removeDuplicates()
                     .map { isVisible in
                         if isVisible {
@@ -99,12 +99,12 @@ final class IceBarColorManager: ObservableObject {
                     .switchToLatest()
             )
             .receive(on: DispatchQueue.main)
-            .sink { [weak self, weak iceBarPanel] in
+            .sink { [weak self, weak glacierBarPanel] in
                 guard
                     let self,
-                    let iceBarPanel,
-                    iceBarPanel.isVisible,
-                    let screen = iceBarPanel.screen,
+                    let glacierBarPanel,
+                    glacierBarPanel.isVisible,
+                    let screen = glacierBarPanel.screen,
                     screen == .main
                 else {
                     return
@@ -116,7 +116,7 @@ final class IceBarColorManager: ObservableObject {
                 }
                 updateWindowImage(for: screen)
                 withAnimation {
-                    self.updateColorInfo(with: iceBarPanel.frame, screen: screen)
+                    self.updateColorInfo(with: glacierBarPanel.frame, screen: screen)
                 }
             }
             .store(in: &c)

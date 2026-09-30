@@ -1,5 +1,5 @@
 //
-//  IceColor.swift
+//  GlacierColor.swift
 //  Glacier
 //
 
@@ -7,13 +7,13 @@ import CoreGraphics
 import Foundation
 
 /// A custom color.
-struct IceColor: Hashable {
+struct GlacierColor: Hashable {
     /// The color, represented as a `CGColor`.
     var cgColor: CGColor
 }
 
-// MARK: IceColor: Codable
-extension IceColor: Codable {
+// MARK: GlacierColor: Codable
+extension GlacierColor: Codable {
     private enum CodingKeys: CodingKey {
         case components
         case colorSpace

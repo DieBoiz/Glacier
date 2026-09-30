@@ -9,7 +9,7 @@ import SwiftUI
 struct GeneralSettingsPane: View {
     @EnvironmentObject var appState: AppState
     @ObservedObject var settings: GeneralSettings
-    @State private var isImportingCustomIceIcon = false
+    @State private var isImportingCustomGlacierIcon = false
     @State private var isPresentingError = false
     @State private var presentedError: LocalizedErrorWrapper?
     @State private var isApplyingItemSpacingOffset = false
@@ -34,23 +34,23 @@ struct GeneralSettingsPane: View {
     }
 
     var body: some View {
-        IceForm {
-            IceSection {
+        GlacierForm {
+            GlacierSection {
                 appOptions
             }
-            IceSection {
-                iceIconOptions
+            GlacierSection {
+                glacierIconOptions
             }
-            IceSection {
-                iceBarOptions
+            GlacierSection {
+                glacierBarOptions
             }
-            IceSection {
+            GlacierSection {
                 showOptions
             }
-            IceSection {
+            GlacierSection {
                 rehideOptions
             }
-            IceSection {
+            GlacierSection {
                 spacingOptions
             }
         }
@@ -66,40 +66,40 @@ struct GeneralSettingsPane: View {
     // MARK: Ice Icon Options
 
     @ViewBuilder
-    private var iceIconOptions: some View {
-        showIceIcon
-        if settings.showIceIcon {
-            iceIconPicker
+    private var glacierIconOptions: some View {
+        showGlacierIcon
+        if settings.showGlacierIcon {
+            glacierIconPicker
         }
     }
 
     @ViewBuilder
-    private var showIceIcon: some View {
-        Toggle("Show Ice icon", isOn: $settings.showIceIcon)
+    private var showGlacierIcon: some View {
+        Toggle("Show Ice icon", isOn: $settings.showGlacierIcon)
             .annotation("Click to show hidden menu bar items. Right-click to access Ice's settings.")
     }
 
     @ViewBuilder
-    private var iceIconPicker: some View {
+    private var glacierIconPicker: some View {
         let labelKey = LocalizedStringKey("Ice icon")
 
-        IceMenu(labelKey) {
-            Picker(labelKey, selection: $settings.iceIcon) {
-                ForEach(ControlItemImageSet.userSelectableIceIcons) { imageSet in
+        GlacierMenu(labelKey) {
+            Picker(labelKey, selection: $settings.glacierIcon) {
+                ForEach(ControlItemImageSet.userSelectableGlacierIcons) { imageSet in
                     Button {
-                        settings.iceIcon = imageSet
+                        settings.glacierIcon = imageSet
                     } label: {
-                        iceIconMenuItem(for: imageSet)
+                        glacierIconMenuItem(for: imageSet)
                     }
                     .tag(imageSet)
                 }
-                if let lastCustomIceIcon = settings.lastCustomIceIcon {
+                if let lastCustomGlacierIcon = settings.lastCustomGlacierIcon {
                     Button {
-                        settings.iceIcon = lastCustomIceIcon
+                        settings.glacierIcon = lastCustomGlacierIcon
                     } label: {
-                        iceIconMenuItem(for: lastCustomIceIcon)
+                        glacierIconMenuItem(for: lastCustomGlacierIcon)
                     }
-                    .tag(lastCustomIceIcon)
+                    .tag(lastCustomGlacierIcon)
                 }
             }
             .pickerStyle(.inline)
@@ -108,14 +108,14 @@ struct GeneralSettingsPane: View {
             Divider()
 
             Button("Choose image…") {
-                isImportingCustomIceIcon = true
+                isImportingCustomGlacierIcon = true
             }
         } title: {
-            iceIconMenuItem(for: settings.iceIcon)
+            glacierIconMenuItem(for: settings.glacierIcon)
         }
         .annotation("Choose a custom icon to show in the menu bar.")
         .fileImporter(
-            isPresented: $isImportingCustomIceIcon,
+            isPresented: $isImportingCustomGlacierIcon,
             allowedContentTypes: [.image]
         ) { result in
             do {
@@ -123,7 +123,7 @@ struct GeneralSettingsPane: View {
                 if url.startAccessingSecurityScopedResource() {
                     defer { url.stopAccessingSecurityScopedResource() }
                     let data = try Data(contentsOf: url)
-                    settings.iceIcon = ControlItemImageSet(name: .custom, image: .data(data))
+                    settings.glacierIcon = ControlItemImageSet(name: .custom, image: .data(data))
                 }
             } catch {
                 presentedError = LocalizedErrorWrapper(error)
@@ -137,8 +137,8 @@ struct GeneralSettingsPane: View {
             }
         }
 
-        if case .custom = settings.iceIcon.name {
-            Toggle("Custom icon uses dynamic appearance", isOn: $settings.customIceIconIsTemplate)
+        if case .custom = settings.glacierIcon.name {
+            Toggle("Custom icon uses dynamic appearance", isOn: $settings.customGlacierIconIsTemplate)
                 .annotation {
                     Text(
                         """
@@ -153,7 +153,7 @@ struct GeneralSettingsPane: View {
     }
 
     @ViewBuilder
-    private func iceIconMenuItem(for imageSet: ControlItemImageSet) -> some View {
+    private func glacierIconMenuItem(for imageSet: ControlItemImageSet) -> some View {
         Label {
             Text(imageSet.name.rawValue)
         } icon: {
@@ -173,33 +173,33 @@ struct GeneralSettingsPane: View {
     // MARK: Ice Bar Options
 
     @ViewBuilder
-    private var iceBarOptions: some View {
-        useIceBar
-        if settings.useIceBar {
-            iceBarLocationPicker
+    private var glacierBarOptions: some View {
+        useGlacierBar
+        if settings.useGlacierBar {
+            glacierBarLocationPicker
         }
     }
 
     @ViewBuilder
-    private var useIceBar: some View {
-        Toggle("Use Ice Bar", isOn: $settings.useIceBar)
+    private var useGlacierBar: some View {
+        Toggle("Use Ice Bar", isOn: $settings.useGlacierBar)
             .annotation("Show hidden menu bar items in a separate bar below the menu bar.")
     }
 
     @ViewBuilder
-    private var iceBarLocationPicker: some View {
-        IcePicker("Location", selection: $settings.iceBarLocation) {
-            ForEach(IceBarLocation.allCases) { location in
+    private var glacierBarLocationPicker: some View {
+        GlacierPicker("Location", selection: $settings.glacierBarLocation) {
+            ForEach(GlacierBarLocation.allCases) { location in
                 Text(location.localized).tag(location)
             }
         }
         .annotation {
-            switch settings.iceBarLocation {
+            switch settings.glacierBarLocation {
             case .dynamic:
                 Text("The Ice Bar's location changes based on context.")
             case .mousePointer:
                 Text("The Ice Bar is centered below the mouse pointer.")
-            case .iceIcon:
+            case .glacierIcon:
                 Text("The Ice Bar is centered below the Ice icon.")
             }
         }
@@ -235,7 +235,7 @@ struct GeneralSettingsPane: View {
     @ViewBuilder
     private var rehideStrategyPicker: some View {
         VStack {
-            IcePicker("Strategy", selection: $settings.rehideStrategy) {
+            GlacierPicker("Strategy", selection: $settings.rehideStrategy) {
                 ForEach(RehideStrategy.allCases) { strategy in
                     Text(strategy.localized).tag(strategy)
                 }
@@ -252,7 +252,7 @@ struct GeneralSettingsPane: View {
             }
 
             if case .timed = settings.rehideStrategy {
-                IceSlider(
+                GlacierSlider(
                     rehideIntervalKey,
                     value: $settings.rehideInterval,
                     in: 0...30,
@@ -267,7 +267,7 @@ struct GeneralSettingsPane: View {
     @ViewBuilder
     private var spacingOptions: some View {
         LabeledContent {
-            IceSlider(
+            GlacierSlider(
                 itemSpacingOffsetKey,
                 value: $tempItemSpacingOffset,
                 in: -16...16,

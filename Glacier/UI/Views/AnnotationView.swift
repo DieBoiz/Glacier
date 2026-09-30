@@ -189,6 +189,6 @@ extension View {
 }
 
 extension CGFloat {
-    /// The default spacing for an ``IceForm``.
+    /// The default spacing for an ``GlacierForm``.
     static let annotationDefaultSpacing: CGFloat = 2
 }
