@@ -122,8 +122,20 @@ final class MenuBarItemManager: ObservableObject {
     /// items is being moved.
     private var itemMoveCount = 0
 
+    /// A Boolean value that indicates whether a menu bar item operation is running.
+    private var isPerformingOperation = false
+
+    /// Continuations for operations waiting to run.
+    private var operationWaiters = [CheckedContinuation<Void, Never>]()
+
+    /// A Boolean value that indicates whether the current menu bar items are
+    /// being cached.
+    private var isCachingItems = false
+
     /// A Boolean value that indicates whether a mouse button is down.
-    private var isMouseButtonDown = false
+    private var isMouseButtonDown: Bool {
+        NSEvent.pressedMouseButtons != 0
+    }
 
     /// Event type mask for tracking mouse events.
     private let mouseTrackingMask: NSEvent.EventTypeMask = [
@@ -210,10 +222,6 @@ final class MenuBarItemManager: ObservableObject {
             switch event.type {
             case .mouseMoved:
                 lastMouseMoveStartDate = .now
-            case .leftMouseDown, .rightMouseDown, .otherMouseDown:
-                isMouseButtonDown = true
-            case .leftMouseUp, .rightMouseUp, .otherMouseUp:
-                isMouseButtonDown = false
             default:
                 break
             }
@@ -300,7 +308,7 @@ extension MenuBarItemManager {
                         let section = cache.section(for: targetItem),
                         let index = cache[section].firstIndex(matching: targetItem.info)
                     {
-                        let clampedIndex = (index - 1).clamped(to: cache[section].startIndex...cache[section].endIndex)
+                        let clampedIndex = (index + 1).clamped(to: cache[section].startIndex...cache[section].endIndex)
                         cache[section].insert(item, at: clampedIndex)
                     }
                 }
@@ -313,6 +321,15 @@ extension MenuBarItemManager {
     /// Caches the current menu bar items if needed, ensuring that the control
     /// items are in the correct order.
     func cacheItemsIfNeeded() async {
+        guard !isCachingItems else {
+            logSkippingCache(reason: "items are already being cached")
+            return
+        }
+        isCachingItems = true
+        defer {
+            isCachingItems = false
+        }
+
         do {
             try await waitForItemsToStopMoving(timeout: .seconds(1))
         } catch is TaskTimeoutError {
@@ -329,8 +346,6 @@ extension MenuBarItemManager {
         if cachedItemWindowIDs == itemWindowIDs {
             logSkippingCache(reason: "item windows have not changed")
             return
-        } else {
-            cachedItemWindowIDs = itemWindowIDs
         }
 
         var items = MenuBarItem.getMenuBarItems(onScreenOnly: false, activeSpaceOnly: true)
@@ -341,6 +356,7 @@ extension MenuBarItemManager {
         guard let hiddenControlItem else {
             Logger.itemManager.warning("Missing control item for hidden section")
             Logger.itemManager.debug("Clearing menu bar item cache")
+            cachedItemWindowIDs = []
             itemCache.clear()
             return
         }
@@ -357,9 +373,11 @@ extension MenuBarItemManager {
                 alwaysHiddenControlItem: alwaysHiddenControlItem,
                 otherItems: items
             )
+            cachedItemWindowIDs = itemWindowIDs
         } catch {
             Logger.itemManager.error("Error enforcing control item order: \(error)")
             Logger.itemManager.debug("Clearing menu bar item cache")
+            cachedItemWindowIDs = []
             itemCache.clear()
         }
     }
@@ -490,7 +508,11 @@ extension MenuBarItemManager {
         } else {
             Task(operation: operation)
         }
-        try await task.value
+        try await withTaskCancellationHandler {
+            try await task.value
+        } onCancel: {
+            task.cancel()
+        }
     }
 
     /// Waits asynchronously for all menu bar items to stop moving.
@@ -536,27 +558,35 @@ extension MenuBarItemManager {
     /// - Parameter timeout: Amount of time to wait before throwing an error.
     func waitForNoModifiersPressed(timeout: Duration? = nil) async throws {
         try await waitWithTask(timeout: timeout) {
-            // Return early if no flags are pressed.
-            if NSEvent.modifierFlags.isEmpty {
-                return
-            }
-
-            var cancellable: AnyCancellable?
-
-            await withCheckedContinuation { continuation in
-                cancellable = Publishers.Merge(
-                    UniversalEventMonitor.publisher(for: .flagsChanged),
-                    RunLoopLocalEventMonitor.publisher(for: .flagsChanged, mode: .eventTracking)
-                )
-                .removeDuplicates()
-                .sink { _ in
-                    if NSEvent.modifierFlags.isEmpty {
-                        cancellable?.cancel()
-                        continuation.resume()
-                    }
-                }
+            while !NSEvent.modifierFlags.isEmpty {
+                try Task.checkCancellation()
+                try await Task.sleep(for: .milliseconds(10))
             }
         }
+    }
+}
+
+// MARK: - Exclusive Operations
+
+extension MenuBarItemManager {
+    /// Performs the given operation once all previously requested operations
+    /// have finished, so that menu bar item events never overlap.
+    private func performExclusively<T>(_ operation: () async throws -> T) async rethrows -> T {
+        if isPerformingOperation {
+            await withCheckedContinuation { continuation in
+                operationWaiters.append(continuation)
+            }
+        } else {
+            isPerformingOperation = true
+        }
+        defer {
+            if operationWaiters.isEmpty {
+                isPerformingOperation = false
+            } else {
+                operationWaiters.removeFirst().resume()
+            }
+        }
+        return try await operation()
     }
 }
 
@@ -644,12 +674,12 @@ extension MenuBarItemManager {
             guard let currentTargetFrame = getCurrentFrame(for: targetItem) else {
                 throw EventError(code: .invalidItem, item: targetItem)
             }
-            return currentFrame.maxX == currentTargetFrame.minX
+            return abs(currentFrame.maxX - currentTargetFrame.minX) < 0.5
         case .rightOfItem(let targetItem):
             guard let currentTargetFrame = getCurrentFrame(for: targetItem) else {
                 throw EventError(code: .invalidItem, item: targetItem)
             }
-            return currentFrame.minX == currentTargetFrame.maxX
+            return abs(currentFrame.minX - currentTargetFrame.maxX) < 0.5
         }
     }
 
@@ -1084,6 +1114,14 @@ extension MenuBarItemManager {
     ///   - item: A menu bar item to move.
     ///   - destination: A destination to move the menu bar item.
     func move(item: MenuBarItem, to destination: MoveDestination) async throws {
+        try await performExclusively {
+            try await performMove(item: item, to: destination)
+        }
+    }
+
+    /// Moves a menu bar item to the given destination, without waiting for other
+    /// operations to finish.
+    private func performMove(item: MenuBarItem, to destination: MoveDestination) async throws {
         if try itemHasCorrectPosition(item: item, for: destination) {
             Logger.itemManager.debug("\(item.logString) is already in the correct position")
             return
@@ -1153,17 +1191,26 @@ extension MenuBarItemManager {
     ///   - destination: A destination to move the menu bar item.
     ///   - timeout: Amount of time to wait before throwing an error.
     func slowMove(item: MenuBarItem, to destination: MoveDestination, timeout: Duration = .seconds(1)) async throws {
+        try await performExclusively {
+            try await performSlowMove(item: item, to: destination, timeout: timeout)
+        }
+    }
+
+    /// Moves a menu bar item to the given destination and waits until the move
+    /// completes, without waiting for other operations to finish.
+    private func performSlowMove(item: MenuBarItem, to destination: MoveDestination, timeout: Duration) async throws {
         itemMoveCount += 1
         defer {
             itemMoveCount -= 1
         }
-        try await move(item: item, to: destination)
+        try await performMove(item: item, to: destination)
         let waitTask = Task(timeout: timeout) {
             while true {
                 try Task.checkCancellation()
                 if try await self.itemHasCorrectPosition(item: item, for: destination) {
                     return
                 }
+                try await Task.sleep(for: .milliseconds(10))
             }
         }
         do {
@@ -1179,6 +1226,14 @@ extension MenuBarItemManager {
 extension MenuBarItemManager {
     /// Clicks the given menu bar item with the given mouse button.
     func click(item: MenuBarItem, with mouseButton: CGMouseButton) async throws {
+        try await performExclusively {
+            try await performClick(item: item, with: mouseButton)
+        }
+    }
+
+    /// Clicks the given menu bar item with the given mouse button, without waiting
+    /// for other operations to finish.
+    private func performClick(item: MenuBarItem, with mouseButton: CGMouseButton) async throws {
         guard let source = CGEventSource(stateID: .hidSystemState) else {
             throw EventError(code: .invalidEventSource, item: item)
         }
@@ -1201,13 +1256,6 @@ extension MenuBarItemManager {
                 source: source
             ),
             let mouseUpEvent = CGEvent.menuBarItemEvent(
-                type: .click(buttonStates.up),
-                location: clickPoint,
-                item: item,
-                pid: item.ownerPID,
-                source: source
-            ),
-            let fallbackEvent = CGEvent.menuBarItemEvent(
                 type: .click(buttonStates.up),
                 location: clickPoint,
                 item: item,
@@ -1252,7 +1300,7 @@ extension MenuBarItemManager {
                 Logger.itemManager.debug("Posting fallback event for clicking \(item.logString)")
                 // Catch this, as we still want to throw the existing error if the fallback fails.
                 try await postEventAndWaitToReceive(
-                    fallbackEvent,
+                    mouseUpEvent,
                     to: .sessionEventTap,
                     item: item
                 )
@@ -1345,6 +1393,10 @@ extension MenuBarItemManager {
 
         // Remove all items up to the hidden control item.
         items.trimPrefix { $0.info != .hiddenControlItem }
+        guard !items.isEmpty else {
+            Logger.itemManager.warning("Missing hidden control item, so not showing \(item.logString)")
+            return
+        }
         // Remove the hidden control item.
         items.removeFirst()
         // Remove all offscreen items.
@@ -1369,19 +1421,18 @@ extension MenuBarItemManager {
         let initialWindows = WindowInfo.getOnScreenWindows()
 
         Task {
-            if clickWhenFinished {
-                do {
-                    try await slowMove(item: item, to: .leftOfItem(targetItem))
-                    try await click(item: item, with: mouseButton)
-                } catch {
-                    Logger.itemManager.error("ERROR: \(error)")
+            do {
+                try await performExclusively {
+                    if clickWhenFinished {
+                        try await performSlowMove(item: item, to: .leftOfItem(targetItem), timeout: .seconds(1))
+                        try await performClick(item: item, with: mouseButton)
+                    } else {
+                        try await performMove(item: item, to: .leftOfItem(targetItem))
+                    }
                 }
-            } else {
-                do {
-                    try await move(item: item, to: .leftOfItem(targetItem))
-                } catch {
-                    Logger.itemManager.error("ERROR: \(error)")
-                }
+            } catch {
+                Logger.itemManager.error("ERROR: \(error)")
+                return
             }
 
             try? await Task.sleep(for: .milliseconds(100))
@@ -1410,6 +1461,12 @@ extension MenuBarItemManager {
     /// If an item is currently showing its interface, this method waits for the
     /// interface to close before hiding the items.
     func rehideTempShownItems() async {
+        await performExclusively {
+            await performRehideTempShownItems()
+        }
+    }
+
+    private func performRehideTempShownItems() async {
         itemMoveCount += 1
         defer {
             itemMoveCount -= 1
@@ -1442,25 +1499,30 @@ extension MenuBarItemManager {
             MouseCursor.show()
         }
 
-        while let context = tempShownItemContexts.popLast() {
+        // Contexts added while rehiding are kept for the next rehide.
+        let contexts = tempShownItemContexts
+        tempShownItemContexts.removeAll()
+
+        for context in contexts.reversed() {
             guard let item = items.first(where: { $0.info == context.info }) else {
                 continue
             }
             do {
-                try await move(item: item, to: context.returnDestination)
+                try await performMove(item: item, to: context.returnDestination)
             } catch {
                 Logger.itemManager.error("Failed to rehide \(item.logString) (error: \(error))")
                 failedContexts.append(context)
             }
         }
 
-        if failedContexts.isEmpty {
-            tempShownItemsTimer?.invalidate()
-            tempShownItemsTimer = nil
-        } else {
-            tempShownItemContexts = failedContexts
+        tempShownItemContexts.append(contentsOf: failedContexts)
+
+        if !failedContexts.isEmpty {
             Logger.itemManager.warning("Some items failed to rehide")
             runTempShownItemTimer(for: 3)
+        } else if tempShownItemContexts.isEmpty {
+            tempShownItemsTimer?.invalidate()
+            tempShownItemsTimer = nil
         }
     }
 
