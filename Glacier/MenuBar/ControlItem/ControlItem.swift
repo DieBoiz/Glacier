@@ -14,11 +14,11 @@ final class ControlItem {
     /// An identifier for a control item.
     enum Identifier: String, CaseIterable {
         /// The identifier for the control item for the visible section.
-        case visible = "Ice.ControlItem.Visible"
+        case visible = "Glacier.ControlItem.Visible"
         /// The identifier for the control item for the hidden section.
-        case hidden = "Ice.ControlItem.Hidden"
+        case hidden = "Glacier.ControlItem.Hidden"
         /// The identifier for the control item for the always-hidden section.
-        case alwaysHidden = "Ice.ControlItem.AlwaysHidden"
+        case alwaysHidden = "Glacier.ControlItem.AlwaysHidden"
 
         /// A tag for the control item with this identifier.
         var tag: MenuBarItemTag {
@@ -92,7 +92,7 @@ final class ControlItem {
                     self.constraint = nil
                 }
 
-                // On macOS 27, Ice finds its own items through Accessibility by this identifier.
+                // On macOS 27, Glacier finds its own items through Accessibility by this identifier.
                 button.setAccessibilityIdentifier(controlItem.identifier.rawValue)
                 button.target = controlItem
                 button.action = #selector(controlItem.performAction)
@@ -378,7 +378,7 @@ final class ControlItem {
             button.image = image
         case .hidden, .alwaysHidden:
             if #available(macOS 27.0, *) {
-                // Ice is signed locally, so MenuBarAgent drops its items whenever anything is
+                // Glacier is signed locally, so MenuBarAgent drops its items whenever anything is
                 // concealed (measured on macOS 27.0). A divider is therefore never drawn, yet a
                 // standard-width status item still holds 18 points of the bar, which reads as a
                 // gap between the neighbouring icons. Sections come from the saved layout on 27,
@@ -523,10 +523,10 @@ final class ControlItem {
             appState.settings.hotkeys.hotkey(withAction: action)
         }
 
-        let menu = NSMenu(title: "Ice")
+        let menu = NSMenu(title: "Glacier")
 
         let settingsItem = NSMenuItem(
-            title: "Ice Settings…",
+            title: "Glacier Settings…",
             action: #selector(AppDelegate.openSettingsWindow),
             keyEquivalent: ","
         )
@@ -579,18 +579,20 @@ final class ControlItem {
 
         menu.addItem(.separator())
 
-        let checkForUpdatesItem = NSMenuItem(
-            title: "Check for Updates…",
-            action: #selector(checkForUpdates),
-            keyEquivalent: ""
-        )
-        checkForUpdatesItem.target = self
-        menu.addItem(checkForUpdatesItem)
+        if UpdatesManager.isEnabled {
+            let checkForUpdatesItem = NSMenuItem(
+                title: "Check for Updates…",
+                action: #selector(checkForUpdates),
+                keyEquivalent: ""
+            )
+            checkForUpdatesItem.target = self
+            menu.addItem(checkForUpdatesItem)
 
-        menu.addItem(.separator())
+            menu.addItem(.separator())
+        }
 
         let quitItem = NSMenuItem(
-            title: "Quit Ice",
+            title: "Quit Glacier",
             action: #selector(NSApp.terminate),
             keyEquivalent: "q"
         )

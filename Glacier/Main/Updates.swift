@@ -9,6 +9,12 @@ import SwiftUI
 /// Manager for app updates.
 @MainActor
 final class UpdatesManager: NSObject, ObservableObject {
+    /// A Boolean value that indicates whether app updates are enabled.
+    ///
+    /// Updates need a feed URL and a public signing key in the app's
+    /// Info.plist. Enable this only after both have been configured.
+    static let isEnabled = false
+
     /// A Boolean value that indicates whether the user can check for updates.
     @Published var canCheckForUpdates = false
 
@@ -33,9 +39,12 @@ final class UpdatesManager: NSObject, ObservableObject {
     /// A Boolean value that indicates whether to automatically check for updates.
     var automaticallyChecksForUpdates: Bool {
         get {
-            updater.automaticallyChecksForUpdates
+            Self.isEnabled && updater.automaticallyChecksForUpdates
         }
         set {
+            guard Self.isEnabled else {
+                return
+            }
             objectWillChange.send()
             updater.automaticallyChecksForUpdates = newValue
         }
@@ -44,9 +53,12 @@ final class UpdatesManager: NSObject, ObservableObject {
     /// A Boolean value that indicates whether to automatically download updates.
     var automaticallyDownloadsUpdates: Bool {
         get {
-            updater.automaticallyDownloadsUpdates
+            Self.isEnabled && updater.automaticallyDownloadsUpdates
         }
         set {
+            guard Self.isEnabled else {
+                return
+            }
             objectWillChange.send()
             updater.automaticallyDownloadsUpdates = newValue
         }
@@ -54,6 +66,9 @@ final class UpdatesManager: NSObject, ObservableObject {
 
     /// Performs the initial setup of the manager.
     func performSetup(with appState: AppState) {
+        guard Self.isEnabled else {
+            return
+        }
         self.appState = appState
         _ = updaterController
         configureCancellables()
@@ -69,6 +84,9 @@ final class UpdatesManager: NSObject, ObservableObject {
 
     /// Checks for app updates.
     @objc func checkForUpdates() {
+        guard Self.isEnabled else {
+            return
+        }
         #if DEBUG
         // Checking for updates hangs in debug mode.
         let alert = NSAlert()
