@@ -95,19 +95,22 @@ extension CGImage {
                 return nil
             }
             var data = [UInt32](repeating: 0, count: width * height)
-            guard let context = CGContext(
-                data: &data,
-                width: width,
-                height: height,
-                bitsPerComponent: 8,
-                bytesPerRow: width * 4,
-                space: colorSpace,
-                bitmapInfo: CGBitmapInfo(alpha: .premultipliedFirst, byteOrder: .order32Little)
-            ) else {
-                return nil
+            let didDraw = data.withUnsafeMutableBytes { buffer -> Bool in
+                guard let context = CGContext(
+                    data: buffer.baseAddress,
+                    width: width,
+                    height: height,
+                    bitsPerComponent: 8,
+                    bytesPerRow: width * 4,
+                    space: colorSpace,
+                    bitmapInfo: CGBitmapInfo(alpha: .premultipliedFirst, byteOrder: .order32Little)
+                ) else {
+                    return false
+                }
+                context.draw(self, in: CGRect(x: 0, y: 0, width: width, height: height))
+                return true
             }
-            context.draw(self, in: CGRect(x: 0, y: 0, width: width, height: height))
-            return data
+            return didDraw ? data : nil
         }
 
         func computeComponent(pixel: UInt32, shift: UInt32) -> UInt64 {
@@ -517,9 +520,8 @@ extension NSScreen {
 
     /// The display identifier of the screen.
     var displayID: CGDirectDisplayID {
-        // Value and type are guaranteed here, so force casting is okay.
-        // swiftlint:disable:next force_cast
-        deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as! CGDirectDisplayID
+        let number = deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber
+        return number?.uint32Value ?? CGMainDisplayID()
     }
 
     /// A Boolean value that indicates whether the screen has a notch.
