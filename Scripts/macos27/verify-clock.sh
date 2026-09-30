@@ -13,7 +13,7 @@ quit_ice() {
     for _ in $(seq 1 40); do pgrep -x Ice >/dev/null || return 0; sleep 0.25; done
 }
 start_ice() {
-    open "$HOME/Applications/Ice.app"
+    open "$HOME/Applications/Glacier.app"
     for _ in $(seq 1 40); do pgrep -x Ice >/dev/null && return 0; sleep 0.25; done
 }
 # Leave Ice running, the way the run found it. A run that ended with Ice down left the
@@ -25,7 +25,7 @@ restore() {
 trap restore EXIT
 
 quit_ice
-open "$HOME/Applications/Ice.app"
+open "$HOME/Applications/Glacier.app"
 sleep 10
 
 FAILED=0

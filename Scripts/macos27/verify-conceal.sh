@@ -43,7 +43,7 @@ as_bool() { case "$1" in 1|true|YES|yes) echo true ;; *) echo false ;; esac; }
 ORIGINAL_ICE_BAR=$(as_bool "$(defaults read com.jordanbaird.Ice UseIceBar 2>/dev/null || echo 1)")
 ORIGINAL_HOVER=$(as_bool "$(defaults read com.jordanbaird.Ice ShowOnHover 2>/dev/null || echo 1)")
 start_ice() {
-    open "$HOME/Applications/Ice.app"
+    open "$HOME/Applications/Glacier.app"
     for _ in $(seq 1 40); do pgrep -x Ice >/dev/null && return 0; sleep 0.25; done
 }
 # Leave Ice running, the way the run found it. A run that ended with Ice down left the
@@ -62,7 +62,7 @@ ALL_VISIBLE=$(leftmost all-visible)
 
 defaults write com.jordanbaird.Ice UseIceBar -bool false
 defaults write com.jordanbaird.Ice ShowOnHover -bool true
-open "$HOME/Applications/Ice.app"
+open "$HOME/Applications/Glacier.app"
 sleep 3
 EARLY=$(leftmost early)
 sleep 7

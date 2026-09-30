@@ -10,7 +10,7 @@ let package = Package(
     targets: [
         .target(
             name: "IceMacOS27Core",
-            path: "Ice/MenuBar/MacOS27/Core",
+            path: "Glacier/MenuBar/MacOS27/Core",
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .testTarget(

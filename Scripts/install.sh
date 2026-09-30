@@ -17,11 +17,11 @@ DEST="${DEST:-$HOME/Applications}"
 DERIVED="${DERIVED:-/tmp/ice-build}"
 
 echo "==> Building"
-xcodebuild -project "$ROOT/Ice.xcodeproj" -scheme Ice -configuration Release \
+xcodebuild -project "$ROOT/Glacier.xcodeproj" -scheme Glacier -configuration Release \
     -destination 'platform=macOS' -derivedDataPath "$DERIVED" build \
     | tail -3
 
-APP="$DERIVED/Build/Products/Release/Ice.app"
+APP="$DERIVED/Build/Products/Release/Glacier.app"
 [ -d "$APP" ] || { echo "error: no product at $APP" >&2; exit 1; }
 
 echo "==> Verifying the signature before installing"
@@ -40,12 +40,12 @@ if pgrep -x Ice >/dev/null 2>&1; then
 fi
 
 mkdir -p "$DEST"
-rm -rf "${DEST:?}/Ice.app"
+rm -rf "${DEST:?}/Glacier.app"
 # ditto, not cp: it preserves the code signature.
-ditto "$APP" "$DEST/Ice.app"
+ditto "$APP" "$DEST/Glacier.app"
 
 echo "==> Verifying the installed copy"
-codesign --verify --deep --strict "$DEST/Ice.app"
+codesign --verify --deep --strict "$DEST/Glacier.app"
 
-open -a "$DEST/Ice.app"
-echo "==> Running from $DEST/Ice.app"
+open -a "$DEST/Glacier.app"
+echo "==> Running from $DEST/Glacier.app"

@@ -39,7 +39,7 @@ external_leftmost() {
     "$WORK/bin/analyze-frames" "$WORK/steady" 700 1220 | awk -v n="$1" '$1 == n { print $2 }'
 }
 start_ice() {
-    open "$HOME/Applications/Ice.app"
+    open "$HOME/Applications/Glacier.app"
     for _ in $(seq 1 40); do pgrep -x Ice >/dev/null && return 0; sleep 0.25; done
 }
 # Leave Ice running, the way the run found it. A run that ended with Ice down left the
@@ -62,14 +62,14 @@ trap restore EXIT
 
 quit_ice
 defaults write com.jordanbaird.Ice UseIceBar -bool true
-open "$HOME/Applications/Ice.app"
+open "$HOME/Applications/Glacier.app"
 sleep 10
 activate "$EXT_APP"
 "$WORK/bin/pointer" glide 960 540; "$WORK/bin/pointer" hold 1
 BEFORE=$(external_leftmost before)
 
 # Reopening Ice shows its settings; select Menu Bar Layout.
-open "$HOME/Applications/Ice.app"
+open "$HOME/Applications/Glacier.app"
 sleep 3
 "$WORK/bin/layout-ax" > "$WORK/settings.txt"
 SIDEBAR=$(awk '/^sidebar/ { print $2, $3; exit }' "$WORK/settings.txt")
@@ -94,7 +94,7 @@ activate "$EXT_APP"
 "$WORK/bin/pointer" glide 960 540; "$WORK/bin/pointer" hold 1
 AFTER_CLOSE=$(external_leftmost after-close)
 quit_ice
-open "$HOME/Applications/Ice.app"
+open "$HOME/Applications/Glacier.app"
 sleep 10
 activate "$EXT_APP"
 "$WORK/bin/pointer" glide 960 540; "$WORK/bin/pointer" hold 1
