@@ -823,7 +823,7 @@ extension MenuBarItemManager {
                     location: firstLocation,
                     place: .tailAppendEventTap,
                     types: [nullEvent.type]
-                ) { [weak self] proxy, type, rEvent in
+                ) { [weak self] proxy, _, rEvent in
                     guard let self else {
                         proxy.disable()
                         return nil
@@ -849,7 +849,7 @@ extension MenuBarItemManager {
                     location: secondLocation,
                     place: .tailAppendEventTap,
                     types: [event.type]
-                ) { [weak self] proxy, type, rEvent in
+                ) { [weak self] proxy, _, rEvent in
                     guard let self else {
                         proxy.disable()
                         return nil
