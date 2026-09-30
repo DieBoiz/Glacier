@@ -53,6 +53,18 @@ final class MenuBarManager: ObservableObject {
         self.appState = appState
     }
 
+    /// Returns the section that a click on a section with the given name
+    /// should toggle, taking the current modifier keys into account.
+    func sectionToToggle(defaultName name: MenuBarSection.Name) -> MenuBarSection? {
+        if
+            NSEvent.modifierFlags == .option,
+            appState?.settingsManager.advancedSettingsManager.canToggleAlwaysHiddenSection == true
+        {
+            return section(withName: .alwaysHidden)
+        }
+        return section(withName: name)
+    }
+
     /// Performs the initial setup of the menu bar manager.
     func performSetup() {
         initializeSections()
@@ -95,12 +107,9 @@ final class MenuBarManager: ObservableObject {
             }
             .store(in: &c)
 
-        if
-            let hiddenSection = section(withName: .alwaysHidden),
-            let window = hiddenSection.controlItem.window
-        {
-            window.publisher(for: \.frame)
-                .map { $0.origin.y }
+        if let hiddenSection = section(withName: .alwaysHidden) {
+            hiddenSection.controlItem.$windowFrame
+                .compactMap { $0?.origin.y }
                 .removeDuplicates()
                 .receive(on: DispatchQueue.main)
                 .sink { [weak self] _ in
@@ -134,7 +143,7 @@ final class MenuBarManager: ObservableObject {
             }
             .store(in: &c)
 
-        appState?.settingsWindow?.publisher(for: \.isVisible)
+        appState?.navigationState.$isSettingsPresented
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.updateAverageColorInfo()

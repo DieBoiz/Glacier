@@ -16,13 +16,12 @@ final class Hotkey: ObservableObject {
 
     @Published var keyCombination: KeyCombination? {
         didSet {
-            enable()
+            updateListener()
         }
     }
 
-    var isEnabled: Bool {
-        listener != nil
-    }
+    /// A Boolean value that indicates whether the hotkey is allowed to be registered.
+    private(set) var isEnabled = true
 
     init(keyCombination: KeyCombination?, action: HotkeyAction) {
         self.keyCombination = keyCombination
@@ -31,30 +30,34 @@ final class Hotkey: ObservableObject {
 
     func assignAppState(_ appState: AppState) {
         self.appState = appState
-        enable()
+        updateListener()
     }
 
     func enable() {
-        disable()
-        listener = Listener(hotkey: self, eventKind: .keyDown, appState: appState)
+        isEnabled = true
+        updateListener()
     }
 
     func disable() {
+        isEnabled = false
+        updateListener()
+    }
+
+    private func updateListener() {
         listener?.invalidate()
         listener = nil
+        if isEnabled {
+            listener = Listener(hotkey: self, eventKind: .keyDown, appState: appState)
+        }
     }
 }
 
 extension Hotkey {
     /// An object that manges the lifetime of a hotkey observation.
     private final class Listener {
-        private weak var appState: AppState?
+        private let registry: HotkeyRegistry
 
         private var id: UInt32?
-
-        var isValid: Bool {
-            id != nil
-        }
 
         init?(hotkey: Hotkey, eventKind: HotkeyRegistry.EventKind, appState: AppState?) {
             guard
@@ -63,11 +66,15 @@ extension Hotkey {
             else {
                 return nil
             }
-            let id = appState.hotkeyRegistry.register(
+            let registry = appState.hotkeyRegistry
+            let id = registry.register(
                 hotkey: hotkey,
                 eventKind: eventKind
-            ) { [weak appState] in
-                guard let appState else {
+            ) { [weak hotkey, weak appState] in
+                guard
+                    let hotkey,
+                    let appState
+                else {
                     return
                 }
                 Task {
@@ -77,7 +84,7 @@ extension Hotkey {
             guard let id else {
                 return nil
             }
-            self.appState = appState
+            self.registry = registry
             self.id = id
         }
 
@@ -86,19 +93,10 @@ extension Hotkey {
         }
 
         func invalidate() {
-            guard isValid else {
-                return
-            }
-            guard let appState else {
-                Logger.hotkey.error("Error invalidating hotkey: Missing AppState")
-                return
-            }
-            defer {
-                id = nil
-            }
             if let id {
-                appState.hotkeyRegistry.unregister(id)
+                registry.unregister(id)
             }
+            id = nil
         }
     }
 }

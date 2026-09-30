@@ -4,6 +4,7 @@
 //
 
 import Combine
+import Foundation
 
 @MainActor
 final class SettingsManager: ObservableObject {
@@ -61,3 +62,13 @@ final class SettingsManager: ObservableObject {
 
 // MARK: SettingsManager: BindingExposable
 extension SettingsManager: BindingExposable { }
+
+extension Publisher where Failure == Never {
+    /// Stores each value emitted by the publisher in the defaults under
+    /// the given key, delivering values on the main queue.
+    func persist(forKey key: Defaults.Key) -> AnyCancellable {
+        receive(on: DispatchQueue.main).sink { value in
+            Defaults.set(value, forKey: key)
+        }
+    }
+}

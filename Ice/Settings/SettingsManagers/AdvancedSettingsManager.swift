@@ -66,59 +66,35 @@ final class AdvancedSettingsManager: ObservableObject {
         var c = Set<AnyCancellable>()
 
         $hideApplicationMenus
-            .receive(on: DispatchQueue.main)
-            .sink { shouldHide in
-                Defaults.set(shouldHide, forKey: .hideApplicationMenus)
-            }
+            .persist(forKey: .hideApplicationMenus)
             .store(in: &c)
 
         $showSectionDividers
-            .receive(on: DispatchQueue.main)
-            .sink { shouldShow in
-                Defaults.set(shouldShow, forKey: .showSectionDividers)
-            }
+            .persist(forKey: .showSectionDividers)
             .store(in: &c)
 
         $enableAlwaysHiddenSection
-            .receive(on: DispatchQueue.main)
-            .sink { enable in
-                Defaults.set(enable, forKey: .enableAlwaysHiddenSection)
-            }
+            .persist(forKey: .enableAlwaysHiddenSection)
             .store(in: &c)
 
         $canToggleAlwaysHiddenSection
-            .receive(on: DispatchQueue.main)
-            .sink { canToggle in
-                Defaults.set(canToggle, forKey: .canToggleAlwaysHiddenSection)
-            }
+            .persist(forKey: .canToggleAlwaysHiddenSection)
             .store(in: &c)
 
         $showOnHoverDelay
-            .receive(on: DispatchQueue.main)
-            .sink { delay in
-                Defaults.set(delay, forKey: .showOnHoverDelay)
-            }
+            .persist(forKey: .showOnHoverDelay)
             .store(in: &c)
 
         $tempShowInterval
-            .receive(on: DispatchQueue.main)
-            .sink { interval in
-                Defaults.set(interval, forKey: .tempShowInterval)
-            }
+            .persist(forKey: .tempShowInterval)
             .store(in: &c)
 
         $showAllSectionsOnUserDrag
-            .receive(on: DispatchQueue.main)
-            .sink { showAll in
-                Defaults.set(showAll, forKey: .showAllSectionsOnUserDrag)
-            }
+            .persist(forKey: .showAllSectionsOnUserDrag)
             .store(in: &c)
 
         $showContextMenuOnRightClick
-            .receive(on: DispatchQueue.main)
-            .sink { showAll in
-                Defaults.set(showAll, forKey: .showContextMenuOnRightClick)
-            }
+            .persist(forKey: .showContextMenuOnRightClick)
             .store(in: &c)
 
         cancellables = c

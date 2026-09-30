@@ -15,6 +15,9 @@ final class EventManager {
     /// Storage for internal observers.
     private var cancellables = Set<AnyCancellable>()
 
+    /// The pending task for the "ShowOnHover" feature.
+    private var showOnHoverTask: Task<Void, Never>?
+
     // MARK: Monitors
 
     /// Monitor for mouse down events.
@@ -160,17 +163,8 @@ extension EventManager {
 
             if NSEvent.modifierFlags == .control {
                 handleShowRightClickMenu()
-            } else if
-                NSEvent.modifierFlags == .option,
-                appState.settingsManager.advancedSettingsManager.canToggleAlwaysHiddenSection
-            {
-                if let alwaysHiddenSection = appState.menuBarManager.section(withName: .alwaysHidden) {
-                    alwaysHiddenSection.toggle()
-                }
             } else {
-                if let hiddenSection = appState.menuBarManager.section(withName: .hidden) {
-                    hiddenSection.toggle()
-                }
+                appState.menuBarManager.sectionToToggle(defaultName: .hidden)?.toggle()
             }
         }
     }
@@ -332,7 +326,9 @@ extension EventManager {
 
         // Show all items, including section dividers.
         for section in appState.menuBarManager.sections {
-            section.controlItem.state = .showItems
+            if section.controlItem.state != .showItems {
+                section.controlItem.state = .showItems
+            }
             guard
                 section.controlItem.isSectionDivider,
                 !section.controlItem.isVisible
@@ -365,14 +361,18 @@ extension EventManager {
 
         let delay = appState.settingsManager.advancedSettingsManager.showOnHoverDelay
 
-        Task {
+        showOnHoverTask?.cancel()
+        showOnHoverTask = Task {
             if hiddenSection.isHidden {
                 guard self.isMouseInsideEmptyMenuBarSpace else {
                     return
                 }
                 try? await Task.sleep(for: .seconds(delay))
                 // Make sure the mouse is still inside.
-                guard self.isMouseInsideEmptyMenuBarSpace else {
+                guard
+                    !Task.isCancelled,
+                    self.isMouseInsideEmptyMenuBarSpace
+                else {
                     return
                 }
                 hiddenSection.show()
@@ -386,6 +386,7 @@ extension EventManager {
                 try? await Task.sleep(for: .seconds(delay))
                 // Make sure the mouse is still outside.
                 guard
+                    !Task.isCancelled,
                     !self.isMouseInsideMenuBar,
                     !self.isMouseInsideIceBar
                 else {
