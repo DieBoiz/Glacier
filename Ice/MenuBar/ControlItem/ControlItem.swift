@@ -51,8 +51,17 @@ final class ControlItem {
     /// Storage for internal observers.
     private var cancellables = Set<AnyCancellable>()
 
+    /// The name of the menu bar section associated with the control item.
+    private var sectionName: MenuBarSection.Name {
+        switch identifier {
+        case .iceIcon: .visible
+        case .hidden: .hidden
+        case .alwaysHidden: .alwaysHidden
+        }
+    }
+
     /// The menu bar section associated with the control item.
-    private weak var section: MenuBarSection? {
+    private var section: MenuBarSection? {
         appState?.menuBarManager.sections.first { $0.controlItem === self }
     }
 
@@ -147,14 +156,11 @@ final class ControlItem {
 
         Publishers.CombineLatest($isVisible, $state)
             .sink { [weak self] (isVisible, state) in
-                guard
-                    let self,
-                    let section
-                else {
+                guard let self else {
                     return
                 }
                 if isVisible {
-                    statusItem.length = switch section.name {
+                    statusItem.length = switch sectionName {
                     case .visible: Lengths.standard
                     case .hidden, .alwaysHidden:
                         switch state {
@@ -187,21 +193,8 @@ final class ControlItem {
             .sink { [weak self] isVisible in
                 guard
                     let self,
-                    let appState,
-                    let section
+                    let hotkey = toggleHotkey(for: sectionName)
                 else {
-                    return
-                }
-
-                let manager = appState.settingsManager.hotkeySettingsManager
-
-                let hotkey: Hotkey? = switch section.name {
-                case .visible: nil
-                case .hidden: manager.hotkey(withAction: .toggleHiddenSection)
-                case .alwaysHidden: manager.hotkey(withAction: .toggleAlwaysHiddenSection)
-                }
-
-                guard let hotkey else {
                     return
                 }
 
@@ -333,13 +326,12 @@ final class ControlItem {
     private func updateStatusItem(with state: HidingState) {
         guard
             let appState,
-            let section,
             let button = statusItem.button
         else {
             return
         }
 
-        switch section.name {
+        switch sectionName {
         case .visible:
             isVisible = true
             // Enable the cell, as it may have been previously disabled.
@@ -375,7 +367,7 @@ final class ControlItem {
                 // Enable the cell, as it may have been previously disabled.
                 button.cell?.isEnabled = true
                 // Set the image based on the section name and the hiding state.
-                switch section.name {
+                switch sectionName {
                 case .hidden:
                     button.image = ControlItemImage.builtin(.chevronLarge).nsImage(for: appState)
                 case .alwaysHidden:
@@ -398,21 +390,37 @@ final class ControlItem {
         case .leftMouseDown, .leftMouseUp:
             if NSEvent.modifierFlags == .control {
                 statusItem.showMenu(createMenu(with: appState))
-            } else if
-                NSEvent.modifierFlags == .option,
-                appState.settingsManager.advancedSettingsManager.canToggleAlwaysHiddenSection
-            {
-                if let alwaysHiddenSection = appState.menuBarManager.section(withName: .alwaysHidden) {
-                    alwaysHiddenSection.toggle()
-                }
             } else {
-                section?.toggle()
+                appState.menuBarManager.sectionToToggle(defaultName: sectionName)?.toggle()
             }
         case .rightMouseUp:
             statusItem.showMenu(createMenu(with: appState))
         default:
             break
         }
+    }
+
+    /// Returns the hotkey that toggles the section with the given name.
+    private func toggleHotkey(for name: MenuBarSection.Name) -> Hotkey? {
+        let action: HotkeyAction? = switch name {
+        case .visible: nil
+        case .hidden: .toggleHiddenSection
+        case .alwaysHidden: .toggleAlwaysHiddenSection
+        }
+        guard let action else {
+            return nil
+        }
+        return appState?.settingsManager.hotkeySettingsManager.hotkey(withAction: action)
+    }
+
+    /// Sets the key equivalent of the given menu item to the key combination
+    /// of the given hotkey.
+    private func applyKeyEquivalent(of hotkey: Hotkey?, to item: NSMenuItem) {
+        guard let keyCombination = hotkey?.keyCombination else {
+            return
+        }
+        item.keyEquivalent = keyCombination.key.keyEquivalent
+        item.keyEquivalentModifierMask = keyCombination.modifiers.nsEventFlags
     }
 
     /// Creates a menu to show under the control item.
@@ -440,13 +448,7 @@ final class ControlItem {
             keyEquivalent: ""
         )
         searchItem.target = self
-        if
-            let hotkey = hotkey(withAction: .searchMenuBarItems),
-            let keyCombination = hotkey.keyCombination
-        {
-            searchItem.keyEquivalent = keyCombination.key.keyEquivalent
-            searchItem.keyEquivalentModifierMask = keyCombination.modifiers.nsEventFlags
-        }
+        applyKeyEquivalent(of: hotkey(withAction: .searchMenuBarItems), to: searchItem)
         menu.addItem(searchItem)
 
         menu.addItem(.separator())
@@ -468,26 +470,7 @@ final class ControlItem {
             )
             item.target = self
             Self.sectionStorage.weakSet(section, for: item)
-            switch name {
-            case .visible:
-                break
-            case .hidden:
-                if
-                    let hotkey = hotkey(withAction: .toggleHiddenSection),
-                    let keyCombination = hotkey.keyCombination
-                {
-                    item.keyEquivalent = keyCombination.key.keyEquivalent
-                    item.keyEquivalentModifierMask = keyCombination.modifiers.nsEventFlags
-                }
-            case .alwaysHidden:
-                if
-                    let hotkey = hotkey(withAction: .toggleAlwaysHiddenSection),
-                    let keyCombination = hotkey.keyCombination
-                {
-                    item.keyEquivalent = keyCombination.key.keyEquivalent
-                    item.keyEquivalentModifierMask = keyCombination.modifiers.nsEventFlags
-                }
-            }
+            applyKeyEquivalent(of: toggleHotkey(for: name), to: item)
             menu.addItem(item)
         }
 
