@@ -11,4 +11,18 @@ extension SectionLayout27 {
         updated[bundleID] = section == .visible ? nil : section
         return updated
     }
+
+    /// The applications pinned to Visible after moving an application to a section.
+    ///
+    /// Having no entry in the saved layout also means Visible, so an application the user moved
+    /// there on purpose is remembered here, and is never hidden to fit beside the notch.
+    static func pinnedVisible(settingSection section: MacOS27Section, for bundleID: String, in pinned: Set<String>) -> Set<String> {
+        var updated = pinned
+        if section == .visible {
+            updated.insert(bundleID)
+        } else {
+            updated.remove(bundleID)
+        }
+        return updated
+    }
 }

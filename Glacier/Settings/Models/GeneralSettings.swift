@@ -31,6 +31,10 @@ final class GeneralSettings: ObservableObject {
     /// in a separate bar below the menu bar.
     @Published var useGlacierBar = false
 
+    /// A Boolean value that indicates whether applications that do not fit
+    /// beside the notch are moved to the Glacier Bar (macOS 27).
+    @Published var autoFitNotch = false
+
     /// The location where the Glacier Bar appears.
     @Published var glacierBarLocation: GlacierBarLocation = .dynamic
 
@@ -87,6 +91,7 @@ final class GeneralSettings: ObservableObject {
         Defaults.ifPresent(key: .showGlacierIcon, assign: &showGlacierIcon)
         Defaults.ifPresent(key: .customGlacierIconIsTemplate, assign: &customGlacierIconIsTemplate)
         Defaults.ifPresent(key: .useGlacierBar, assign: &useGlacierBar)
+        Defaults.ifPresent(key: .macOS27AutoNotchFit, assign: &autoFitNotch)
         Defaults.ifPresent(key: .showOnClick, assign: &showOnClick)
         Defaults.ifPresent(key: .showOnHover, assign: &showOnHover)
         Defaults.ifPresent(key: .showOnScroll, assign: &showOnScroll)
@@ -157,6 +162,13 @@ final class GeneralSettings: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { useGlacierBar in
                 Defaults.set(useGlacierBar, forKey: .useGlacierBar)
+            }
+            .store(in: &c)
+
+        $autoFitNotch
+            .receive(on: DispatchQueue.main)
+            .sink { autoFitNotch in
+                Defaults.set(autoFitNotch, forKey: .macOS27AutoNotchFit)
             }
             .store(in: &c)
 

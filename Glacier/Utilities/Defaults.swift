@@ -170,6 +170,9 @@ extension Defaults {
         case macOS27Layout = "MacOS27Layout"
         case macOS27ClickRestoreDelay = "MacOS27ClickRestoreDelay"
         case macOS27GlacierBarWaitsForRefresh = "MacOS27GlacierBarWaitsForRefresh"
+        case macOS27AutoNotchFit = "MacOS27AutoNotchFit"
+        case macOS27AutoHidden = "MacOS27AutoHidden"
+        case macOS27PinnedVisible = "MacOS27PinnedVisible"
 
         // MARK: Migration
         case hasMigrated0_8_0 = "hasMigrated0_8_0"

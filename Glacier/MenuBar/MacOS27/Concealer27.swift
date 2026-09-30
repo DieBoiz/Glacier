@@ -47,6 +47,23 @@ final class Concealer27 {
         return stored.compactMapValues(MacOS27Section.init(rawValue:))
     }
 
+    /// Applications the user moved to Visible, which are never hidden to fit beside the notch.
+    private var pinnedVisible: Set<String> {
+        Set(Defaults.stringArray(forKey: .macOS27PinnedVisible) ?? [])
+    }
+
+    /// Applications hidden because they would not fit beside the notch. Kept apart from the
+    /// saved layout, so turning the feature off leaves the user's own layout as it was.
+    private var autoHidden: Set<String> {
+        get { isNotchFitEnabled ? Set(Defaults.stringArray(forKey: .macOS27AutoHidden) ?? []) : [] }
+        set { Defaults.set(newValue.sorted(), forKey: .macOS27AutoHidden) }
+    }
+
+    /// The saved layout with the applications hidden to fit beside the notch.
+    private var effectiveLayout: [String: MacOS27Section] {
+        NotchFit27.layout(saved: savedLayout, autoHidden: autoHidden, pinned: pinnedVisible)
+    }
+
     func performSetup(with appState: AppState) {
         self.appState = appState
         guard MenuBarAssessmentAssertion27.isAvailable else {
@@ -67,6 +84,8 @@ final class Concealer27 {
             .sink { [weak self] _ in
                 MainActor.assumeIsolated {
                     self?.update()
+                    // An application that quit leaves room that nothing else reports.
+                    self?.scheduleNotchFit(after: .seconds(2))
                 }
             }
             .store(in: &cancellables)
@@ -105,6 +124,38 @@ final class Concealer27 {
                 }
             }
             .store(in: &cancellables)
+        let general = appState.settings.general
+        general.$autoFitNotch
+            .combineLatest(general.$useGlacierBar)
+            .removeDuplicates { $0 == $1 }
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.scheduleNotchFit(after: .zero)
+                }
+            }
+            .store(in: &cancellables)
+        // The active menu bar follows the active application from one display to the other,
+        // and takes about a second to move (measured).
+        NSWorkspace.shared.notificationCenter
+            .publisher(for: NSWorkspace.didActivateApplicationNotification)
+            .debounce(for: 1.5, scheduler: DispatchQueue.main)
+            .sink { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.notchFitActiveDisplayMayHaveChanged()
+                }
+            }
+            .store(in: &cancellables)
+        observers.append(NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.scheduleNotchFit()
+            }
+        })
         update()
     }
 
@@ -118,7 +169,7 @@ final class Concealer27 {
         }
         let applications = NSWorkspace.shared.runningApplications
         let running = Set(applications.compactMap(\.bundleIdentifier))
-        let layout = SectionLayout27.effectiveLayout(observed: [:], saved: savedLayout, running: running)
+        let layout = SectionLayout27.effectiveLayout(observed: [:], saved: effectiveLayout, running: running)
         let target = ConcealmentPlanner27.concealedSets(
             layout: layout,
             state: revealState(appState),
@@ -281,9 +332,17 @@ final class Concealer27 {
 
     /// Moves an application to a section of the saved layout and applies it.
     func setSection(_ section: MacOS27Section, for bundleID: String) {
+        // A drop within the same row only reorders the layout bar. Treating it as a move would
+        // pin every visible application and make an application hidden to fit a manual entry.
+        guard section != effectiveLayout[bundleID] ?? .visible else {
+            return
+        }
         let updated = SectionLayout27.settingSection(section, for: bundleID, in: savedLayout)
         Defaults.set(updated.mapValues(\.rawValue), forKey: .macOS27Layout)
+        let pinned = SectionLayout27.pinnedVisible(settingSection: section, for: bundleID, in: pinnedVisible)
+        Defaults.set(pinned.sorted(), forKey: .macOS27PinnedVisible)
         update()
+        scheduleNotchFit()
         Task { [weak self] in
             await self?.appState?.itemManager.cacheItemsRegardless()
         }
@@ -292,8 +351,12 @@ final class Concealer27 {
     /// Builds the item cache from the saved layout rather than the order on the bar.
     func cacheFromSavedLayout(items: [MenuBarItem], displayID: CGDirectDisplayID?) -> MenuBarItemManager.ItemCache {
         var cache = MenuBarItemManager.ItemCache(displayID: displayID)
-        let layout = savedLayout
+        let layout = effectiveLayout
         let bundleIDs = MenuBarItem.sourceBundleIDs(of: items)
+        if isNotchFitEnabled {
+            // The bar changed; the fit reads it again itself, once it has settled.
+            scheduleNotchFit()
+        }
         for item in items.sorted(by: { $0.bounds.minX < $1.bounds.minX }) where item.canBeHidden && !item.isSystemClone {
             if item.isControlItem {
                 if item.tag == .visibleControlItem {
@@ -308,6 +371,206 @@ final class Concealer27 {
             }
         }
         return cache
+    }
+
+    /// Whether the application is in Hidden only because it would not fit beside the notch.
+    func isAutoHidden(bundleID: String) -> Bool {
+        autoHidden.contains(bundleID) && savedLayout[bundleID] == nil && !pinnedVisible.contains(bundleID)
+    }
+
+    // MARK: Notch Fit
+
+    private var widthCache = NotchWidthCache27()
+    private var notchFitTask: Task<Void, Never>?
+    private var lastNotchFitChangeAt: ContinuousClock.Instant?
+    /// When each hidden application that reports no items was first found so.
+    private var unseenSince = [String: ContinuousClock.Instant]()
+    private var lastActiveDisplayID: CGDirectDisplayID?
+
+    private static let notchFitParameters = NotchFit27.Parameters(
+        // Room left free next to the notch. A guess, not measured.
+        gap: 8,
+        // Measured on macOS 27.0: neighbouring items overlap by 2 points.
+        defaultSpacing: -2,
+        slack: 12
+    )
+    /// Every change of the hidden set makes the bar animate and be read again, so changes
+    /// are spaced out, whatever the reads report in between.
+    private static let notchFitMinimumInterval = Duration.seconds(3)
+    /// How long an application that reports no items stays hidden.
+    private static let unseenLimit = Duration.seconds(300)
+
+    private var isNotchFitEnabled: Bool {
+        guard let general = appState?.settings.general else {
+            return false
+        }
+        return general.autoFitNotch && general.useGlacierBar
+    }
+
+    /// The built-in display, which is the only one with a notch.
+    private var notchedScreen: NSScreen? {
+        NSScreen.screens.first { $0.hasNotch }
+    }
+
+    /// The notched screen, if its menu bar is the active one. Accessibility only reports
+    /// frames for the active menu bar.
+    private var activeNotchedScreen: NSScreen? {
+        guard let screen = notchedScreen, screen == NSScreen.screenWithActiveMenuBar else {
+            return nil
+        }
+        return screen
+    }
+
+    /// Fits the bar again when the active menu bar comes back to the notched display, where
+    /// the hidden set was kept as it was while another display had it.
+    private func notchFitActiveDisplayMayHaveChanged() {
+        guard isNotchFitEnabled else {
+            return
+        }
+        let displayID = Bridging.getActiveMenuBarDisplayID()
+        guard displayID != lastActiveDisplayID else {
+            return
+        }
+        lastActiveDisplayID = displayID
+        if activeNotchedScreen != nil {
+            scheduleNotchFit()
+        }
+    }
+
+    private func scheduleNotchFit(after delay: Duration = .seconds(1)) {
+        notchFitTask?.cancel()
+        notchFitTask = Task { [weak self] in
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled else {
+                return
+            }
+            await self?.fitAroundNotch()
+        }
+    }
+
+    /// Measures the notched bar, then hides the applications that would not fit beside the
+    /// notch and shows again the ones that fit once more.
+    private func fitAroundNotch() async {
+        let stored = Set(Defaults.stringArray(forKey: .macOS27AutoHidden) ?? [])
+        guard isNotchFitEnabled, notchedScreen != nil else {
+            unseenSince.removeAll()
+            if !stored.isEmpty {
+                applyAutoHidden([], previous: stored)
+            }
+            return
+        }
+        guard activeNotchedScreen != nil else {
+            return
+        }
+        if let lastNotchFitChangeAt {
+            let next = lastNotchFitChangeAt + Self.notchFitMinimumInterval
+            if ContinuousClock.now < next {
+                scheduleNotchFit(after: next - .now)
+                return
+            }
+        }
+        if let remaining = timeUntilSettled() {
+            scheduleNotchFit(after: remaining)
+            return
+        }
+        // A read that overlaps a concealment change sees the bar in between two layouts.
+        let changeAtRead = lastChangeAt
+        let items = await MenuBarItemProvider27.items()
+        guard !Task.isCancelled, isNotchFitEnabled else {
+            return
+        }
+        guard lastChangeAt == changeAtRead else {
+            scheduleNotchFit()
+            return
+        }
+        guard let screen = activeNotchedScreen, let bar = notchFitBar(items: items, on: screen) else {
+            return
+        }
+
+        let now = ContinuousClock.now
+        _ = widthCache.record(NotchFit27.measurements(of: bar), now: seconds(now))
+        let saved = savedLayout
+        let pinned = pinnedVisible
+        let keepUnseen = stored.filter { bundleID in
+            unseenSince[bundleID].map { now - $0 < Self.unseenLimit } ?? true
+        }
+        guard let plan = NotchFit27.plan(
+            bar: bar,
+            saved: saved,
+            pinned: pinned,
+            running: Set(NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier)),
+            previous: stored,
+            keepUnseen: keepUnseen,
+            widths: widthCache,
+            parameters: Self.notchFitParameters
+        ) else {
+            return
+        }
+        unseenSince = plan.unseen.reduce(into: [:]) { result, bundleID in
+            result[bundleID] = unseenSince[bundleID] ?? now
+        }
+        guard plan.hidden != stored else {
+            return
+        }
+        logger.info("Notch fit hides \(plan.hidden.sorted().joined(separator: ","), privacy: .public)")
+        applyAutoHidden(plan.hidden, previous: stored)
+    }
+
+    private func applyAutoHidden(_ bundleIDs: Set<String>, previous: Set<String>) {
+        autoHidden = bundleIDs
+        // Applications the user placed are not affected by the set, so a change among them
+        // needs no new concealment.
+        let saved = savedLayout
+        let pinned = pinnedVisible
+        guard NotchFit27.effective(bundleIDs, saved: saved, pinned: pinned) != NotchFit27.effective(previous, saved: saved, pinned: pinned) else {
+            return
+        }
+        lastNotchFitChangeAt = .now
+        update()
+        Task { [weak self] in
+            await self?.appState?.itemManager.cacheItemsRegardless()
+        }
+    }
+
+    /// The read of the notched bar as the fit sees it.
+    private func notchFitBar(items: [MenuBarItem], on screen: NSScreen) -> NotchFit27.Bar? {
+        let displayBounds = CGDisplayBounds(screen.displayID)
+        let ownPID = ProcessInfo.processInfo.processIdentifier
+        let bundleIDs = MenuBarItem.sourceBundleIDs(of: items)
+        let barItems = items.compactMap { item -> NotchFit27.BarItem? in
+            guard !item.isSystemClone else {
+                return nil
+            }
+            let isOwn = item.ownerPID == ownPID
+            if isOwn, !item.isControlItem {
+                return nil
+            }
+            return NotchFit27.BarItem(
+                bundleID: item.canBeHidden && !isOwn ? item.sourcePID.flatMap { bundleIDs[$0] } : nil,
+                key: item.tag.description,
+                frame: item.bounds,
+                isOnScreen: item.isOnScreen,
+                isConcealed: concealedPIDs.contains(item.ownerPID),
+                isOwn: isOwn,
+                isSystem: item.tag.namespace == .menuBarAgent
+            )
+        }
+        return NotchFit27.Bar(
+            items: barItems,
+            displayBounds: displayBounds,
+            notch: StuckOverflow27.notchSpan(
+                displayBounds: displayBounds,
+                leftAreaWidth: screen.auxiliaryTopLeftArea?.width,
+                rightAreaWidth: screen.auxiliaryTopRightArea?.width
+            )
+        )
+    }
+
+    private let notchFitEpoch = ContinuousClock.now
+
+    private func seconds(_ instant: ContinuousClock.Instant) -> Double {
+        let components = (instant - notchFitEpoch).components
+        return Double(components.seconds) + Double(components.attoseconds) / 1e18
     }
 
     // MARK: Private

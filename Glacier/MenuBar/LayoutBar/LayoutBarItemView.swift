@@ -88,7 +88,11 @@ final class LayoutBarItemView: NSView {
             if !item.canBeHidden {
                 self.isEnabled = false
                 self.toolTip = "\(item.displayName) — macOS always shows this item"
-            } else if item.sourceApplication?.bundleIdentifier == nil {
+            } else if let bundleID = item.sourceApplication?.bundleIdentifier {
+                if appState.concealer27.isAutoHidden(bundleID: bundleID) {
+                    self.toolTip = "\(item.displayName) — hidden because it does not fit beside the notch; move it to Visible to keep it there"
+                }
+            } else {
                 self.isEnabled = false
                 self.toolTip = "\(item.displayName) — cannot be hidden on this version of macOS"
             }

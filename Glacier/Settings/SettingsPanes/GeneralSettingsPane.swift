@@ -175,9 +175,31 @@ struct GeneralSettingsPane: View {
     @ViewBuilder
     private var glacierBarOptions: some View {
         useGlacierBar
+        if #available(macOS 27.0, *) {
+            autoFitNotch
+        }
         if settings.useGlacierBar {
             glacierBarLocationPicker
         }
+    }
+
+    @ViewBuilder
+    private var autoFitNotch: some View {
+        Toggle("Fit menu bar items around the notch", isOn: $settings.autoFitNotch)
+            .disabled(!settings.useGlacierBar)
+            .annotation {
+                if settings.useGlacierBar {
+                    Text(
+                        """
+                        On a display with a notch, apps whose items would not fit beside it \
+                        are moved to the Glacier Bar. Apps you move to Visible after turning this on \
+                        stay there.
+                        """
+                    )
+                } else {
+                    Text("Requires the Glacier Bar.")
+                }
+            }
     }
 
     @ViewBuilder
