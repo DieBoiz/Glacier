@@ -31,6 +31,8 @@ final class LayoutBarItemView: NSView {
     /// A Boolean value that indicates whether the item view is currently inside a container.
     var hasContainer = false
 
+    private var hasShownDragAlert = false
+
     /// The image displayed inside the view.
     private var image: NSImage? {
         didSet {
@@ -149,18 +151,29 @@ final class LayoutBarItemView: NSView {
         }
     }
 
+    override func mouseDown(with event: NSEvent) {
+        hasShownDragAlert = false
+        super.mouseDown(with: event)
+    }
+
+    private func showDragAlert(_ alert: NSAlert) {
+        guard !hasShownDragAlert else {
+            return
+        }
+        hasShownDragAlert = true
+        alert.runModal()
+    }
+
     override func mouseDragged(with event: NSEvent) {
         super.mouseDragged(with: event)
 
         guard isEnabled else {
-            let alert = provideAlertForDisabledItem()
-            alert.runModal()
+            showDragAlert(provideAlertForDisabledItem())
             return
         }
 
         guard Bridging.responsivity(for: item.ownerPID) != .unresponsive else {
-            let alert = provideAlertForUnresponsiveItem()
-            alert.runModal()
+            showDragAlert(provideAlertForUnresponsiveItem())
             return
         }
 
