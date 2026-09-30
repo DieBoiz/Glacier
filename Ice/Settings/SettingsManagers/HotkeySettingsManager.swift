@@ -51,20 +51,22 @@ final class HotkeySettingsManager: ObservableObject {
     private func configureCancellables() {
         var c = Set<AnyCancellable>()
 
-        $hotkeys.combineLatest(Publishers.MergeMany(hotkeys.map { $0.$keyCombination }))
+        if let appState {
+            for hotkey in hotkeys {
+                hotkey.assignAppState(appState)
+            }
+        }
+
+        Publishers.MergeMany(hotkeys.map { $0.$keyCombination })
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] hotkeys, _ in
-                guard
-                    let self,
-                    let appState
-                else {
+            .sink { [weak self] _ in
+                guard let self else {
                     return
                 }
                 var dict = [String: Data]()
                 for hotkey in hotkeys {
-                    hotkey.assignAppState(appState)
                     do {
-                        dict[hotkey.action.rawValue] = try self.encoder.encode(hotkey.keyCombination)
+                        dict[hotkey.action.rawValue] = try encoder.encode(hotkey.keyCombination)
                     } catch {
                         Logger.hotkeySettingsManager.error("Error encoding hotkey: \(error)")
                     }

@@ -6,6 +6,7 @@
 import Carbon.HIToolbox
 import Cocoa
 import Combine
+import os
 
 /// An object that manages the registration, storage, and unregistration of hotkeys.
 final class HotkeyRegistry {
@@ -58,7 +59,20 @@ final class HotkeyRegistry {
 
     private var registrations = [UInt32: Registration]()
 
+    private let nextID = OSAllocatedUnfairLock(initialState: UInt32(0))
+
     private var cancellables = Set<AnyCancellable>()
+
+    deinit {
+        for registration in registrations.values {
+            if let hotKeyRef = registration.hotKeyRef {
+                UnregisterEventHotKey(hotKeyRef)
+            }
+        }
+        if let eventHandlerRef {
+            RemoveEventHandler(eventHandlerRef)
+        }
+    }
 
     /// Installs the global event handler reference, if it isn't already installed.
     private func installIfNeeded() -> OSStatus {
@@ -120,14 +134,6 @@ final class HotkeyRegistry {
     ///
     /// - Returns: The registration's identifier on success, `nil` on failure.
     func register(hotkey: Hotkey, eventKind: EventKind, handler: @escaping () -> Void) -> UInt32? {
-        enum Context {
-            static var currentID: UInt32 = 0
-        }
-
-        defer {
-            Context.currentID += 1
-        }
-
         guard let keyCombination = hotkey.keyCombination else {
             Logger.hotkeyRegistry.error("Hotkey does not have a valid key combination")
             return nil
@@ -140,7 +146,7 @@ final class HotkeyRegistry {
             return nil
         }
 
-        let id = Context.currentID
+        let id = nextID.withLock { $0 }
 
         guard registrations[id] == nil else {
             Logger.hotkeyRegistry.error("Hotkey already registered for id \(id)")
@@ -177,6 +183,7 @@ final class HotkeyRegistry {
             handler: handler
         )
         registrations[id] = registration
+        nextID.withLock { $0 += 1 }
 
         return id
     }
