@@ -4,6 +4,7 @@
 - [Glacier removed an item](#glacier-removed-an-item)
 - [Glacier does not remember the order of items](#glacier-does-not-remember-the-order-of-items)
 - [How do I solve the `Glacier cannot arrange menu bar items in automatically hidden menu bars` error?](#how-do-i-solve-the-glacier-cannot-arrange-menu-bar-items-in-automatically-hidden-menu-bars-error)
+- [Glacier keeps asking for permissions that are already granted](#glacier-keeps-asking-for-permissions-that-are-already-granted)
 
 ## Items are moved to the always-hidden section
 
@@ -29,3 +30,13 @@ This is not a bug, but a missing feature.
 3. Select `Never` for `Automatically hide and show the menu bar`
 4. Update your `Menu Bar Items` in `Glacier`
 5. Return `Automatically hide and show the menu bar` to your preferred settings
+
+## Glacier keeps asking for permissions that are already granted
+
+This can happen after switching between builds of Glacier, for example when you used a development build before. macOS ties a permission to the code
+signature of the app, so an old Accessibility or Screen Recording entry can show as enabled without matching the installed app.
+
+1. Quit Glacier
+2. Run `tccutil reset All de.nlmyr.glacier` in Terminal
+3. Open Glacier and grant Accessibility and Screen Recording again
+4. If Glacier still reports a missing permission, quit and reopen it
