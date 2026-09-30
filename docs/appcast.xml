@@ -3,6 +3,14 @@
     <channel>
         <title>Glacier</title>
         <item>
+            <title>1.0.1</title>
+            <pubDate>Thu, 01 Oct 2026 00:49:47 +0200</pubDate>
+            <sparkle:version>2</sparkle:version>
+            <sparkle:shortVersionString>1.0.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>27.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/DieBoiz/Glacier/releases/download/v1.0.1/Glacier-1.0.1.dmg" length="2900597" type="application/octet-stream" sparkle:edSignature="xlIFLE/YR982GFcHvvwo2tnNVfS3TPcLr300XUu0hZZUFb46wnI+vtJfE0i7Ef5UhyfyCI/mjV3KXjH6pXD6BQ=="/>
+        </item>
+        <item>
             <title>1.0.0</title>
             <pubDate>Thu, 01 Oct 2026 00:37:41 +0200</pubDate>
             <sparkle:version>1</sparkle:version>
