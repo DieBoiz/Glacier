@@ -60,6 +60,145 @@ enum ItemImages27 {
         return (UInt8((common >> 16) & 0xff), UInt8((common >> 8) & 0xff), UInt8(common & 0xff))
     }
 
+    /// How far from the bar a pixel must be to belong to a tile drawn on it.
+    private static let tileMinimumDistance = 24
+    /// How far from the tile's colour a pixel may drift and still be part of the tile.
+    private static let tileTolerance = 14
+    /// The least share of the item a tile covers.
+    private static let tileMinimumArea = 0.3
+    /// The least share of the item's height a tile spans.
+    private static let tileMinimumHeight = 0.7
+    /// The least share of its bounding box a tile fills; a round or ragged shape is not one.
+    private static let tileMinimumFill = 0.85
+    /// The least share of a tile the glyph on it covers, or the tile is the glyph itself.
+    private static let tileMinimumInk = 0.03
+
+    /// The item with the bar around its tile painted over in the tile's colour, and that colour,
+    /// or `nil` when the item is not drawn on a tile.
+    ///
+    /// macOS 27 draws some items on a rounded tile of their own, darker or lighter than the
+    /// bar. The edges of the capture hold only bar, so the bar was taken for the background
+    /// and the tile came through as a solid box around the glyph, and, being the biggest thing
+    /// off the bar, decided the tone of every glyph on the strip. A tile is a large, nearly
+    /// rectangular field of one colour that nearly spans the item's height, with bar above and
+    /// below, and encloses the glyph. A stretch of gradient wallpaper runs the full height.
+    /// What lies outside it, its rim included, is bar, and is painted over.
+    static func flatteningTile(
+        pixels: [UInt8],
+        width: Int,
+        height: Int,
+        background: (r: UInt8, g: UInt8, b: UInt8)
+    ) -> (pixels: [UInt8], colour: (r: UInt8, g: UInt8, b: UInt8))? {
+        let area = width * height
+        guard width > 2, height > 2, pixels.count >= area * 4 else {
+            return nil
+        }
+        let bar = [Int(background.r), Int(background.g), Int(background.b)]
+        func channels(_ pixel: Int) -> [Int] {
+            (0..<3).map { Int(pixels[pixel * 4 + $0]) }
+        }
+        var buckets = [Int: (count: Int, sum: [Int])]()
+        for pixel in 0..<area {
+            let colour = channels(pixel)
+            guard (0..<3).reduce(0, { max($0, abs(colour[$1] - bar[$1])) }) >= tileMinimumDistance else {
+                continue
+            }
+            let key = (colour[0] >> 4) * 256 + (colour[1] >> 4) * 16 + (colour[2] >> 4)
+            var bucket = buckets[key] ?? (0, [0, 0, 0])
+            bucket.count += 1
+            for channel in 0..<3 {
+                bucket.sum[channel] += colour[channel]
+            }
+            buckets[key] = bucket
+        }
+        guard
+            let top = buckets.values.max(by: { $0.count < $1.count }),
+            Double(top.count) >= Double(area) * tileMinimumArea
+        else {
+            return nil
+        }
+        let tile = top.sum.map { $0 / top.count }
+        let isTile = (0..<area).map { pixel -> Bool in
+            let colour = channels(pixel)
+            return (0..<3).allSatisfy { abs(colour[$0] - tile[$0]) <= tileTolerance }
+        }
+
+        func flood(from seeds: [Int], through allowed: (Int) -> Bool) -> [Bool] {
+            var reached = [Bool](repeating: false, count: area)
+            var queue = seeds.filter { allowed($0) }
+            for pixel in queue {
+                reached[pixel] = true
+            }
+            var cursor = 0
+            while cursor < queue.count {
+                let pixel = queue[cursor]
+                cursor += 1
+                let x = pixel % width
+                let y = pixel / width
+                var neighbours = [Int]()
+                if x > 0 { neighbours.append(pixel - 1) }
+                if x < width - 1 { neighbours.append(pixel + 1) }
+                if y > 0 { neighbours.append(pixel - width) }
+                if y < height - 1 { neighbours.append(pixel + width) }
+                for neighbour in neighbours where !reached[neighbour] && allowed(neighbour) {
+                    reached[neighbour] = true
+                    queue.append(neighbour)
+                }
+            }
+            return reached
+        }
+
+        var component = [Bool](repeating: false, count: area)
+        var largest = 0
+        var visited = [Bool](repeating: false, count: area)
+        for start in 0..<area where isTile[start] && !visited[start] {
+            let reached = flood(from: [start]) { isTile[$0] && !visited[$0] }
+            let size = reached.filter { $0 }.count
+            for pixel in 0..<area where reached[pixel] {
+                visited[pixel] = true
+            }
+            if size > largest {
+                largest = size
+                component = reached
+            }
+        }
+        guard Double(largest) >= Double(area) * tileMinimumArea else {
+            return nil
+        }
+
+        let border = (0..<width).flatMap { [$0, (height - 1) * width + $0] }
+            + (0..<height).flatMap { [$0 * width, $0 * width + width - 1] }
+        let outside = flood(from: border) { !component[$0] }
+        let enclosed = (0..<area).filter { !outside[$0] }
+        let rows = enclosed.map { $0 / width }
+        let columns = enclosed.map { $0 % width }
+        guard
+            let top = rows.min(), let bottom = rows.max(),
+            let left = columns.min(), let right = columns.max()
+        else {
+            return nil
+        }
+        let box = (bottom - top + 1) * (right - left + 1)
+        let ink = enclosed.count - largest
+        guard
+            top > 0, bottom < height - 1,
+            Double(bottom - top + 1) >= Double(height) * tileMinimumHeight,
+            Double(enclosed.count) >= Double(box) * tileMinimumFill,
+            Double(ink) >= Double(enclosed.count) * tileMinimumInk
+        else {
+            return nil
+        }
+
+        let colour = (r: UInt8(tile[0]), g: UInt8(tile[1]), b: UInt8(tile[2]))
+        var result = pixels
+        for pixel in 0..<area where outside[pixel] {
+            result[pixel * 4] = colour.r
+            result[pixel * 4 + 1] = colour.g
+            result[pixel * 4 + 2] = colour.b
+        }
+        return (result, colour)
+    }
+
     /// The same pixels with the background made transparent, so the glyph can be drawn on
     /// any colour.
     ///
@@ -74,8 +213,19 @@ enum ItemImages27 {
         width: Int,
         height: Int,
         background: (r: UInt8, g: UInt8, b: UInt8),
-        tone: GlyphTone? = nil
+        tone: GlyphTone? = nil,
+        flattensTile: Bool = true
     ) -> [UInt8] {
+        if flattensTile, let tile = flatteningTile(pixels: pixels, width: width, height: height, background: background) {
+            return removingBackground(
+                pixels: tile.pixels,
+                width: width,
+                height: height,
+                background: tile.colour,
+                tone: tone,
+                flattensTile: false
+            )
+        }
         let count = min(pixels.count, width * height * 4)
         let backgroundChannels = [Double(background.r), Double(background.g), Double(background.b)]
 
@@ -326,7 +476,12 @@ enum ItemImages27 {
         guard count >= 4 else {
             return (0, 0)
         }
-        let common = backgroundColor(pixels: pixels, width: width, height: height)
+        var pixels = pixels
+        var common = backgroundColor(pixels: pixels, width: width, height: height)
+        if let tile = flatteningTile(pixels: pixels, width: width, height: height, background: common) {
+            pixels = tile.pixels
+            common = tile.colour
+        }
         let base = [Int(common.r), Int(common.g), Int(common.b)]
         var light = 0
         var dark = 0

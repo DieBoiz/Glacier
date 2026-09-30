@@ -422,6 +422,58 @@ struct ItemImageBackground27Tests {
         #expect(tinted[edge + 3] == keyed[edge + 3])
         #expect(tinted[edge + 3] > 0 && tinted[edge + 3] < 255)
     }
+
+    @Test("An item drawn on a tile keeps its glyph and loses the tile and the bar around it")
+    func tileRemoved() {
+        let width = 24
+        let height = 16
+        func isTile(_ x: Int, _ y: Int) -> Bool {
+            (3...20).contains(x) && (2...13).contains(y)
+        }
+        func isGlyph(_ x: Int, _ y: Int) -> Bool {
+            (10...13).contains(x) && (5...10).contains(y)
+        }
+        var pixels = [UInt8]()
+        for y in 0..<height {
+            for x in 0..<width {
+                let value: UInt8 = isGlyph(x, y) ? 255 : (isTile(x, y) ? 35 : 150)
+                pixels += [value, value, value, 255]
+            }
+        }
+        let background = ItemImages27.backgroundColor(pixels: pixels, width: width, height: height)
+        let votes = ItemImages27.toneVotes(pixels: pixels, width: width, height: height)
+        #expect(votes.dark == 0)
+        let result = ItemImages27.removingBackground(pixels: pixels, width: width, height: height, background: background, tone: .dark)
+        for y in 0..<height {
+            for x in 0..<width {
+                let alpha = result[(y * width + x) * 4 + 3]
+                if isGlyph(x, y) {
+                    #expect(alpha > 200)
+                } else {
+                    #expect(alpha == 0)
+                }
+            }
+        }
+    }
+
+    @Test("A filled glyph on the bar is not taken for a tile")
+    func glyphIsNotTile() {
+        let width = 24
+        let height = 16
+        func isBody(_ x: Int, _ y: Int) -> Bool {
+            (3...20).contains(x) && (2...13).contains(y)
+        }
+        var pixels = [UInt8]()
+        for y in 0..<height {
+            for x in 0..<width {
+                let value: UInt8 = isBody(x, y) ? 255 : 150
+                pixels += [value, value, value, 255]
+            }
+        }
+        let background = ItemImages27.backgroundColor(pixels: pixels, width: width, height: height)
+        let result = ItemImages27.removingBackground(pixels: pixels, width: width, height: height, background: background)
+        #expect(result[(8 * width + 12) * 4 + 3] > 200)
+    }
 }
 
 @Suite("System item panel")
