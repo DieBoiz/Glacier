@@ -13,7 +13,7 @@ final class UpdatesManager: NSObject, ObservableObject {
     ///
     /// Updates need a feed URL and a public signing key in the app's
     /// Info.plist. Enable this only after both have been configured.
-    static let isEnabled = false
+    static let isEnabled = true
 
     /// A Boolean value that indicates whether the user can check for updates.
     @Published var canCheckForUpdates = false

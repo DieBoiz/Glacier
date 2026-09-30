@@ -2,5 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>SUFeedURL</key>
+	<string>https://dieboiz.github.io/Glacier/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>ap5m1amMn3W1SMmIr1fJJfYw8NsnGgn8fklIT8I71Pg=</string>
 </dict>
 </plist>
