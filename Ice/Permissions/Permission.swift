@@ -35,6 +35,8 @@ class Permission: ObservableObject, Identifiable {
     private var timerCancellable: AnyCancellable?
     /// Observer that observes the ``hasPermission`` property.
     private var hasPermissionCancellable: AnyCancellable?
+    /// The continuation of a pending call to ``waitForPermission()``.
+    private var waitContinuation: CheckedContinuation<Void, Never>?
 
     /// Creates a permission.
     ///
@@ -72,7 +74,10 @@ class Permission: ObservableObject, Identifiable {
                 guard let self else {
                     return
                 }
-                hasPermission = check()
+                let current = check()
+                if hasPermission != current {
+                    hasPermission = current
+                }
             }
     }
 
@@ -90,26 +95,29 @@ class Permission: ObservableObject, Identifiable {
         guard !hasPermission else {
             return
         }
-        return await withCheckedContinuation { continuation in
+        await withCheckedContinuation { continuation in
+            waitContinuation = continuation
             hasPermissionCancellable = $hasPermission.sink { [weak self] hasPermission in
-                guard let self else {
-                    continuation.resume()
-                    return
-                }
                 if hasPermission {
-                    hasPermissionCancellable?.cancel()
-                    continuation.resume()
+                    self?.resumeWaiter()
                 }
             }
         }
+    }
+
+    private func resumeWaiter() {
+        hasPermissionCancellable?.cancel()
+        hasPermissionCancellable = nil
+        let continuation = waitContinuation
+        waitContinuation = nil
+        continuation?.resume()
     }
 
     /// Stops running the permission check.
     func stopCheck() {
         timerCancellable?.cancel()
         timerCancellable = nil
-        hasPermissionCancellable?.cancel()
-        hasPermissionCancellable = nil
+        resumeWaiter()
     }
 }
 
