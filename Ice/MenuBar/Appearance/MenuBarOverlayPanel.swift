@@ -37,7 +37,7 @@ final class MenuBarOverlayPanel: NSPanel {
         ///   - flag: The update flag to set the task for.
         ///   - timeout: The timeout of the task.
         ///   - operation: The operation for the task to perform.
-        func setTask(for flag: UpdateFlag, timeout: Duration, operation: @escaping () async throws -> Void) {
+        func setTask(for flag: UpdateFlag, timeout: Duration, operation: @escaping @MainActor @Sendable () async throws -> Void) {
             cancelTask(for: flag)
             tasks[flag] = Task.detached(timeout: timeout) {
                 try await operation()
@@ -432,7 +432,11 @@ private final class MenuBarOverlayPanelContentView: NSView {
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        configureCancellables()
+        if window == nil {
+            cancellables.removeAll()
+        } else {
+            configureCancellables()
+        }
     }
 
     private func configureCancellables() {
@@ -442,11 +446,17 @@ private final class MenuBarOverlayPanelContentView: NSView {
             if let appState = overlayPanel.appState {
                 appState.appearanceManager.$configuration
                     .removeDuplicates()
-                    .assign(to: &$fullConfiguration)
+                    .sink { [weak self] configuration in
+                        self?.fullConfiguration = configuration
+                    }
+                    .store(in: &c)
 
                 appState.appearanceManager.$previewConfiguration
                     .removeDuplicates()
-                    .assign(to: &$previewConfiguration)
+                    .sink { [weak self] configuration in
+                        self?.previewConfiguration = configuration
+                    }
+                    .store(in: &c)
 
                 // Fade out whenever a menu bar item is being dragged.
                 appState.$isDraggingMenuBarItem
