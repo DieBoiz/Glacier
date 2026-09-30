@@ -9,7 +9,7 @@ WORK="$(mktemp -d /tmp/ice-verify-clock.XXXXXX)"
 swiftc -O "$ROOT/Scripts/macos27/system-click.swift" -o "$WORK/system-click"
 
 quit_ice() {
-    osascript -e 'tell application id "com.jordanbaird.Ice" to quit' >/dev/null 2>&1 || true
+    osascript -e 'tell application id "de.nlmyr.glacier" to quit' >/dev/null 2>&1 || true
     for _ in $(seq 1 40); do pgrep -x Ice >/dev/null || return 0; sleep 0.25; done
 }
 start_ice() {

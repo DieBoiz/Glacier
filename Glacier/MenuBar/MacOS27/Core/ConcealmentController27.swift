@@ -41,7 +41,7 @@ final class ConcealmentController27 {
     }
 
     private let backend: ConcealmentBackend27
-    private let logger = Logger(subsystem: "com.jordanbaird.Ice", category: "ConcealmentController27")
+    private let logger = Logger(subsystem: "de.nlmyr.glacier", category: "ConcealmentController27")
     private var live = [Live]()
 
     /// Whether any assertion is currently live.

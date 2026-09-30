@@ -16,7 +16,7 @@ enum Constants {
     static let copyrightString = Bundle.main.copyrightString ?? ""
 
     /// The app's bundle identifier.
-    static let bundleIdentifier = Bundle.main.bundleIdentifier ?? "com.jordanbaird.Ice"
+    static let bundleIdentifier = Bundle.main.bundleIdentifier ?? "de.nlmyr.glacier"
 
     /// The app's display name.
     static let displayName = Bundle.main.displayName ?? "Ice"

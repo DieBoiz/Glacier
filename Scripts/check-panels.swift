@@ -12,7 +12,7 @@
 import Cocoa
 
 guard let pid = NSWorkspace.shared.runningApplications
-        .first(where: { $0.bundleIdentifier == "com.jordanbaird.Ice" })?
+        .first(where: { $0.bundleIdentifier == "de.nlmyr.glacier" })?
         .processIdentifier,
       let list = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]]
 else {

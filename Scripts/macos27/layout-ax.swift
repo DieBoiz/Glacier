@@ -38,7 +38,7 @@ func walk(_ element: AXUIElement, depth: Int) {
     }
 }
 
-guard let ice = NSRunningApplication.runningApplications(withBundleIdentifier: "com.jordanbaird.Ice").first else {
+guard let ice = NSRunningApplication.runningApplications(withBundleIdentifier: "de.nlmyr.glacier").first else {
     exit(1)
 }
 let app = AXUIElementCreateApplication(ice.processIdentifier)

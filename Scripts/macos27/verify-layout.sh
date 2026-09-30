@@ -26,11 +26,11 @@ done
 # again carried any earlier damage forward: a second run saved the already-changed layout
 # as its "before" and restored that, which is how a real layout was lost once.
 as_bool() { case "$1" in 1|true|YES|yes) echo true ;; *) echo false ;; esac; }
-ORIGINAL_GLACIER_BAR=$(as_bool "$(defaults read com.jordanbaird.Ice UseGlacierBar 2>/dev/null || echo 1)")
-LAYOUT_BEFORE=$(defaults read com.jordanbaird.Ice MacOS27Layout 2>/dev/null || echo "{}")
+ORIGINAL_GLACIER_BAR=$(as_bool "$(defaults read de.nlmyr.glacier UseGlacierBar 2>/dev/null || echo 1)")
+LAYOUT_BEFORE=$(defaults read de.nlmyr.glacier MacOS27Layout 2>/dev/null || echo "{}")
 
 quit_ice() {
-    osascript -e 'tell application id "com.jordanbaird.Ice" to quit' >/dev/null 2>&1 || true
+    osascript -e 'tell application id "de.nlmyr.glacier" to quit' >/dev/null 2>&1 || true
     for _ in $(seq 1 40); do pgrep -x Ice >/dev/null || return 0; sleep 0.25; done
 }
 activate() { osascript -e "tell application \"$1\" to activate" >/dev/null; sleep 2.5; }
@@ -46,10 +46,10 @@ start_ice() {
 # machine concealing nothing, and whatever was looked at next showed nothing worth seeing.
 restore() {
     quit_ice
-    defaults write com.jordanbaird.Ice MacOS27Layout "$LAYOUT_BEFORE"
-    defaults write com.jordanbaird.Ice UseGlacierBar -bool "$ORIGINAL_GLACIER_BAR"
+    defaults write de.nlmyr.glacier MacOS27Layout "$LAYOUT_BEFORE"
+    defaults write de.nlmyr.glacier UseGlacierBar -bool "$ORIGINAL_GLACIER_BAR"
     local after
-    after=$(defaults read com.jordanbaird.Ice MacOS27Layout 2>/dev/null || echo "{}")
+    after=$(defaults read de.nlmyr.glacier MacOS27Layout 2>/dev/null || echo "{}")
     if [ "$after" = "$LAYOUT_BEFORE" ]; then
         echo "PASS  the saved layout is back as it was"
     else
@@ -61,7 +61,7 @@ restore() {
 trap restore EXIT
 
 quit_ice
-defaults write com.jordanbaird.Ice UseGlacierBar -bool true
+defaults write de.nlmyr.glacier UseGlacierBar -bool true
 open "$HOME/Applications/Glacier.app"
 sleep 10
 activate "$EXT_APP"
@@ -87,7 +87,7 @@ if [ -n "$SOURCE" ] && [ -n "$TARGET" ]; then
     "$WORK/bin/input" drag ${SOURCE} ${TARGET}
 fi
 sleep 3
-STORED=$(defaults read com.jordanbaird.Ice MacOS27Layout | sed -nE "s/^ *\"?${TEST_BUNDLE//./\\.}\"? = ([0-9]);/\1/p")
+STORED=$(defaults read de.nlmyr.glacier MacOS27Layout | sed -nE "s/^ *\"?${TEST_BUNDLE//./\\.}\"? = ([0-9]);/\1/p")
 "$WORK/bin/input" close-window
 sleep 3
 activate "$EXT_APP"
@@ -99,7 +99,7 @@ sleep 10
 activate "$EXT_APP"
 "$WORK/bin/pointer" glide 960 540; "$WORK/bin/pointer" hold 1
 AFTER_RESTART=$(external_leftmost after-restart)
-STORED_AFTER_RESTART=$(defaults read com.jordanbaird.Ice MacOS27Layout | sed -nE "s/^ *\"?${TEST_BUNDLE//./\\.}\"? = ([0-9]);/\1/p")
+STORED_AFTER_RESTART=$(defaults read de.nlmyr.glacier MacOS27Layout | sed -nE "s/^ *\"?${TEST_BUNDLE//./\\.}\"? = ([0-9]);/\1/p")
 
 echo "before=$BEFORE layout-open=$OPEN_LEFTMOST after-close=$AFTER_CLOSE after-restart=$AFTER_RESTART stored=${STORED:-none} stored-after-restart=${STORED_AFTER_RESTART:-none}"
 FAILED=0

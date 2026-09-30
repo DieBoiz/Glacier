@@ -39,7 +39,7 @@ enum MenuBarItemProvider27 {
 
     /// Accessibility calls block, so they run on their own queue, off the Swift
     /// concurrency pool (see `MenuBarItemImageCache.captureQueue`).
-    private static let queue = DispatchQueue(label: "com.jordanbaird.Ice.MenuBarItemProvider27", qos: .userInitiated)
+    private static let queue = DispatchQueue(label: "de.nlmyr.glacier.MenuBarItemProvider27", qos: .userInitiated)
 
     private static let lock = NSLock()
     nonisolated(unsafe) private static var entries = [CGWindowID: Entry]()

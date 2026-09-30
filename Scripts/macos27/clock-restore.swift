@@ -99,7 +99,7 @@ func clocksByDisplay() -> [CGDirectDisplayID: CGRect] {
 func setDelay(_ milliseconds: Int) {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
-    process.arguments = ["write", "com.jordanbaird.Ice", "MacOS27ClickRestoreDelay", "-int", "\(milliseconds)"]
+    process.arguments = ["write", "de.nlmyr.glacier", "MacOS27ClickRestoreDelay", "-int", "\(milliseconds)"]
     try? process.run()
     process.waitUntilExit()
     usleep(1_500_000)
@@ -155,7 +155,7 @@ for delay in delays {
 // Leave the default unset, so Ice's own measured value decides again.
 let clear = Process()
 clear.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
-clear.arguments = ["delete", "com.jordanbaird.Ice", "MacOS27ClickRestoreDelay"]
+clear.arguments = ["delete", "de.nlmyr.glacier", "MacOS27ClickRestoreDelay"]
 try? clear.run()
 clear.waitUntilExit()
 print(failures == 0 ? "every delay opened the panel every time" : "\(failures) display/delay combinations lost a click")

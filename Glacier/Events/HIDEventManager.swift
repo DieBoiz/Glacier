@@ -455,7 +455,7 @@ extension HIDEventManager {
     private static let replayedClickMarker: Int64 = 0x1CE_27_C1C
 
     /// Times the steps of a bridged click, which happen on both opening and closing a panel.
-    private static let bridgeLogger = Logger(subsystem: "com.jordanbaird.Ice", category: "ClickBridge27")
+    private static let bridgeLogger = Logger(subsystem: "de.nlmyr.glacier", category: "ClickBridge27")
 
     /// Marks Ice's click that makes a display's menu bar active before an item is pressed.
     static let menuBarActivationMarker: Int64 = 0x1CE_27_BA2
