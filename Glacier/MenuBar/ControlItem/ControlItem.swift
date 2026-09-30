@@ -525,6 +525,18 @@ final class ControlItem {
 
         let menu = NSMenu(title: "Glacier")
 
+        if UpdatesManager.isEnabled, let version = appState.updatesManager.availableUpdateVersion {
+            let updateItem = NSMenuItem(
+                title: "Update Available (\(version))…",
+                action: #selector(checkForUpdates),
+                keyEquivalent: ""
+            )
+            updateItem.target = self
+            menu.addItem(updateItem)
+
+            menu.addItem(.separator())
+        }
+
         let settingsItem = NSMenuItem(
             title: "Glacier Settings…",
             action: #selector(AppDelegate.openSettingsWindow),

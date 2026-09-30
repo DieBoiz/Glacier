@@ -21,6 +21,9 @@ final class UpdatesManager: NSObject, ObservableObject {
     /// The date of the last update check.
     @Published var lastUpdateCheckDate: Date?
 
+    /// The version of an available update, or `nil` if the app is up to date.
+    @Published private(set) var availableUpdateVersion: String?
+
     /// The shared app state.
     private(set) weak var appState: AppState?
 
@@ -111,6 +114,14 @@ extension UpdatesManager: @preconcurrency SPUUpdaterDelegate {
             return
         }
         appState.userNotificationManager.requestAuthorization()
+    }
+
+    func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
+        availableUpdateVersion = item.displayVersionString
+    }
+
+    func updaterDidNotFindUpdate(_ updater: SPUUpdater) {
+        availableUpdateVersion = nil
     }
 }
 

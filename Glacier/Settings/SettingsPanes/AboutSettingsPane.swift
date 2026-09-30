@@ -123,7 +123,7 @@ struct AboutSettingsPane: View {
     @ViewBuilder
     private var checkForUpdates: some View {
         HStack {
-            Button("Check for Updates") {
+            Button(updatesManager.availableUpdateVersion.map { "Update Available (\($0))" } ?? "Check for Updates") {
                 updatesManager.checkForUpdates()
             }
             Spacer()
