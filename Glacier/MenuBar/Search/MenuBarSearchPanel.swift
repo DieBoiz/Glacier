@@ -408,7 +408,7 @@ private struct SettingsButton: View {
 
     var body: some View {
         Button(action: action) {
-            Image(.iceCubeStroke)
+            Image(.glacierStroke)
                 .resizable()
                 .scaledToFit()
                 .foregroundStyle(.secondary)
