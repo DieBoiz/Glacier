@@ -19,6 +19,8 @@ final class MenuBarSearchPanel: NSPanel {
     /// Model for menu bar item search.
     private let model = MenuBarSearchModel()
 
+    private var showGeneration = 0
+
     /// Monitor for mouse down events.
     private lazy var mouseDownMonitor = EventMonitor.universal(
         for: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
@@ -112,11 +114,18 @@ final class MenuBarSearchPanel: NSPanel {
             return
         }
 
+        showGeneration += 1
+        let generation = showGeneration
+
         // Important that we set the navigation state before updating the cache.
         appState.navigationState.isSearchPresented = true
 
         Task {
             await appState.imageCache.updateCache()
+
+            guard generation == showGeneration else {
+                return
+            }
 
             let hostingView = MenuBarSearchHostingView(appState: appState, model: model, displayID: screen.displayID, panel: self)
             hostingView.setFrameSize(hostingView.intrinsicContentSize)
@@ -145,6 +154,7 @@ final class MenuBarSearchPanel: NSPanel {
 
     /// Dismisses the search panel.
     override func close() {
+        showGeneration += 1
         super.close()
         contentView = nil
         mouseDownMonitor.stop()

@@ -244,6 +244,7 @@ final class MenuBarSection {
     /// Starts running checks to determine when to rehide the section.
     private func startRehideChecks() {
         rehideTimer?.invalidate()
+        rehideTimer = nil
         rehideMonitor?.stop()
 
         guard
@@ -267,20 +268,17 @@ final class MenuBarSection {
                         withTimeInterval: appState.settings.general.rehideInterval,
                         repeats: false
                     ) { [weak self] _ in
-                        guard
-                            let self,
-                            let screen = NSScreen.screenWithMouse ?? NSScreen.main
-                        else {
+                        guard let self else {
+                            return
+                        }
+                        rehideTimer = nil
+                        guard let screen = NSScreen.screenWithMouse ?? NSScreen.main else {
                             return
                         }
                         if NSEvent.mouseLocation.y < screen.visibleFrame.maxY {
-                            Task {
-                                await self.hide()
-                            }
+                            hide()
                         } else {
-                            Task {
-                                await self.startRehideChecks()
-                            }
+                            startRehideChecks()
                         }
                     }
                 }

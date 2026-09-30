@@ -22,6 +22,8 @@ final class IceBarPanel: NSPanel {
     /// Storage for internal observers.
     private var cancellables = Set<AnyCancellable>()
 
+    private var showGeneration = 0
+
     /// Creates a new Ice Bar panel.
     init() {
         super.init(
@@ -164,6 +166,9 @@ final class IceBarPanel: NSPanel {
             return
         }
 
+        showGeneration += 1
+        let generation = showGeneration
+
         // IMPORTANT: We must set the navigation state and current section
         // before updating the caches.
         appState.navigationState.isIceBarPresented = true
@@ -190,6 +195,10 @@ final class IceBarPanel: NSPanel {
                 try await cacheTask.value
             } catch {
                 Logger.default.error("Cache update failed when showing IceBarPanel - \(error)")
+            }
+
+            guard generation == showGeneration else {
+                return
             }
         }
 
@@ -233,6 +242,7 @@ final class IceBarPanel: NSPanel {
     }
 
     override func close() {
+        showGeneration += 1
         super.close()
         contentView = nil
         currentSection = nil
@@ -433,7 +443,7 @@ private struct IceBarItemView: View {
     let item: MenuBarItem
     let section: MenuBarSection.Name
 
-    private var leftClickAction: () -> Void {
+    private func clickAction(for mouseButton: CGMouseButton) -> () -> Void {
         return { [weak itemManager, weak menuBarManager] in
             guard let itemManager, let menuBarManager else {
                 return
@@ -441,40 +451,26 @@ private struct IceBarItemView: View {
             let iceBarDisplayID = menuBarManager.iceBarPanel.screen?.displayID
             menuBarManager.section(withName: section)?.hide()
             Task {
-                try await Task.sleep(for: .milliseconds(25))
+                try? await Task.sleep(for: .milliseconds(25))
                 if #available(macOS 27.0, *), let appState = itemManager.appState {
-                    await ItemClicker27.click(item: item, mouseButton: .left, iceBarDisplayID: iceBarDisplayID, appState: appState)
+                    await ItemClicker27.click(item: item, mouseButton: mouseButton, iceBarDisplayID: iceBarDisplayID, appState: appState)
                     return
                 }
                 if Bridging.isWindowOnScreen(item.windowID) {
-                    try await itemManager.click(item: item, with: .left)
+                    try await itemManager.click(item: item, with: mouseButton)
                 } else {
-                    await itemManager.temporarilyShow(item: item, clickingWith: .left)
+                    await itemManager.temporarilyShow(item: item, clickingWith: mouseButton)
                 }
             }
         }
     }
 
+    private var leftClickAction: () -> Void {
+        clickAction(for: .left)
+    }
+
     private var rightClickAction: () -> Void {
-        return { [weak itemManager, weak menuBarManager] in
-            guard let itemManager, let menuBarManager else {
-                return
-            }
-            let iceBarDisplayID = menuBarManager.iceBarPanel.screen?.displayID
-            menuBarManager.section(withName: section)?.hide()
-            Task {
-                try await Task.sleep(for: .milliseconds(25))
-                if #available(macOS 27.0, *), let appState = itemManager.appState {
-                    await ItemClicker27.click(item: item, mouseButton: .right, iceBarDisplayID: iceBarDisplayID, appState: appState)
-                    return
-                }
-                if Bridging.isWindowOnScreen(item.windowID) {
-                    try await itemManager.click(item: item, with: .right)
-                } else {
-                    await itemManager.temporarilyShow(item: item, clickingWith: .right)
-                }
-            }
-        }
+        clickAction(for: .right)
     }
 
     var body: some View {
