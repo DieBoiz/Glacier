@@ -463,6 +463,11 @@ final class MenuBarItemImageCache: ObservableObject {
         guard ScreenCapture.cachedCheckPermissions() else {
             return true
         }
+        if #available(macOS 27.0, *) {
+            // A concealed item has no image until it has been on the bar once. The section has
+            // to stay a drop target meanwhile, or nothing could ever be moved into it.
+            return false
+        }
         let items = appState?.itemManager.itemCache[section] ?? []
         guard !items.isEmpty else {
             return false

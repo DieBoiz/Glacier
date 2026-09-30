@@ -52,7 +52,7 @@ w = d.textlength(title, font=f)
 d.text(((W * S - w) / 2, 34 * S), title, font=f, fill=(32, 78, 112))
 
 # Arrow between the two icons (icons sit at x=180 and x=480, y=190).
-ax0, ax1, ay = 250, 410, 190
+ax0, ax1, ay = 255, 390, 190
 color = (255, 255, 255, 235)
 d.line([(ax0 * S, ay * S), (ax1 * S, ay * S)], fill=color, width=6 * S)
 d.polygon([((ax1 + 22) * S, ay * S), ((ax1 - 4) * S, (ay - 16) * S), ((ax1 - 4) * S, (ay + 16) * S)], fill=color)

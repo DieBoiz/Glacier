@@ -140,6 +140,15 @@ final class LayoutBarItemView: NSView {
                 operation: .sourceOver,
                 fraction: isEnabled ? 1.0 : 0.67
             )
+            if cachedImage == nil, #available(macOS 27.0, *), let icon = item.sourceApplication?.icon {
+                let side = min(bounds.height, 20)
+                icon.draw(
+                    in: CGRect(x: bounds.midX - side / 2, y: bounds.midY - side / 2, width: side, height: side),
+                    from: .zero,
+                    operation: .sourceOver,
+                    fraction: isEnabled ? 1.0 : 0.67
+                )
+            }
             if Bridging.isProcessUnresponsive(item.ownerPID) {
                 let warningImage = NSImage.warning
                 let width: CGFloat = 15
