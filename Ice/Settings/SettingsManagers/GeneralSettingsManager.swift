@@ -118,10 +118,7 @@ final class GeneralSettingsManager: ObservableObject {
         var c = Set<AnyCancellable>()
 
         $showIceIcon
-            .receive(on: DispatchQueue.main)
-            .sink { showIceIcon in
-                Defaults.set(showIceIcon, forKey: .showIceIcon)
-            }
+            .persist(forKey: .showIceIcon)
             .store(in: &c)
 
         $iceIcon
@@ -143,45 +140,28 @@ final class GeneralSettingsManager: ObservableObject {
             .store(in: &c)
 
         $customIceIconIsTemplate
-            .receive(on: DispatchQueue.main)
-            .sink { isTemplate in
-                Defaults.set(isTemplate, forKey: .customIceIconIsTemplate)
-            }
+            .persist(forKey: .customIceIconIsTemplate)
             .store(in: &c)
 
         $useIceBar
-            .receive(on: DispatchQueue.main)
-            .sink { useIceBar in
-                Defaults.set(useIceBar, forKey: .useIceBar)
-            }
+            .persist(forKey: .useIceBar)
             .store(in: &c)
 
         $iceBarLocation
-            .receive(on: DispatchQueue.main)
-            .sink { location in
-                Defaults.set(location.rawValue, forKey: .iceBarLocation)
-            }
+            .map(\.rawValue)
+            .persist(forKey: .iceBarLocation)
             .store(in: &c)
 
         $showOnClick
-            .receive(on: DispatchQueue.main)
-            .sink { showOnClick in
-                Defaults.set(showOnClick, forKey: .showOnClick)
-            }
+            .persist(forKey: .showOnClick)
             .store(in: &c)
 
         $showOnHover
-            .receive(on: DispatchQueue.main)
-            .sink { showOnHover in
-                Defaults.set(showOnHover, forKey: .showOnHover)
-            }
+            .persist(forKey: .showOnHover)
             .store(in: &c)
 
         $showOnScroll
-            .receive(on: DispatchQueue.main)
-            .sink { showOnScroll in
-                Defaults.set(showOnScroll, forKey: .showOnScroll)
-            }
+            .persist(forKey: .showOnScroll)
             .store(in: &c)
 
         $itemSpacingOffset
@@ -193,24 +173,16 @@ final class GeneralSettingsManager: ObservableObject {
             .store(in: &c)
 
         $autoRehide
-            .receive(on: DispatchQueue.main)
-            .sink { autoRehide in
-                Defaults.set(autoRehide, forKey: .autoRehide)
-            }
+            .persist(forKey: .autoRehide)
             .store(in: &c)
 
         $rehideStrategy
-            .receive(on: DispatchQueue.main)
-            .sink { strategy in
-                Defaults.set(strategy.rawValue, forKey: .rehideStrategy)
-            }
+            .map(\.rawValue)
+            .persist(forKey: .rehideStrategy)
             .store(in: &c)
 
         $rehideInterval
-            .receive(on: DispatchQueue.main)
-            .sink { interval in
-                Defaults.set(interval, forKey: .rehideInterval)
-            }
+            .persist(forKey: .rehideInterval)
             .store(in: &c)
 
         cancellables = c
