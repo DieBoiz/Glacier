@@ -63,6 +63,15 @@ final class AppState: ObservableObject {
     /// Storage for internal observers.
     private var cancellables = Set<AnyCancellable>()
 
+    /// Observer for the visibility of the settings window.
+    private var settingsWindowCancellable: AnyCancellable?
+
+    /// The application that was frontmost before the app last activated.
+    private var previousFrontmostApplication: NSRunningApplication?
+
+    /// A Boolean value that indicates whether the app has previously activated.
+    private var hasActivated = false
+
     /// A Boolean value that indicates whether the app is running as a SwiftUI preview.
     let isPreview: Bool = {
         #if DEBUG
@@ -119,20 +128,6 @@ final class AppState: ObservableObject {
             }
             .store(in: &c)
 
-        if let settingsWindow {
-            settingsWindow.publisher(for: \.isVisible)
-                .debounce(for: 0.05, scheduler: DispatchQueue.main)
-                .sink { [weak self] isVisible in
-                    guard let self else {
-                        return
-                    }
-                    navigationState.isSettingsPresented = isVisible
-                }
-                .store(in: &c)
-        } else {
-            Logger.appState.warning("No settings window!")
-        }
-
         Publishers.Merge(
             navigationState.$isAppFrontmost,
             navigationState.$isSettingsPresented
@@ -177,6 +172,18 @@ final class AppState: ObservableObject {
         cancellables = c
     }
 
+    /// Configures the observer for the settings window's visibility.
+    private func configureSettingsWindowCancellable() {
+        guard let settingsWindow else {
+            return
+        }
+        settingsWindowCancellable = settingsWindow.publisher(for: \.isVisible)
+            .debounce(for: 0.05, scheduler: DispatchQueue.main)
+            .sink { [weak self] isVisible in
+                self?.navigationState.isSettingsPresented = isVisible
+            }
+    }
+
     /// Sets up the app state.
     func performSetup() {
         configureCancellables()
@@ -207,7 +214,7 @@ final class AppState: ObservableObject {
             return
         }
         settingsWindow = window
-        configureCancellables()
+        configureSettingsWindowCancellable()
     }
 
     /// Assigns the permissions window to the app state.
@@ -217,7 +224,6 @@ final class AppState: ObservableObject {
             return
         }
         permissionsWindow = window
-        configureCancellables()
     }
 
     /// Opens the settings window.
@@ -250,14 +256,11 @@ final class AppState: ObservableObject {
 
     /// Activates the app and sets its activation policy to the given value.
     func activate(withPolicy policy: NSApplication.ActivationPolicy) {
-        // Store whether the app has previously activated inside an internal
-        // context to keep it isolated.
-        enum Context {
-            static let hasActivated = ObjectStorage<Bool>()
-        }
-
         func activate() {
             if let frontApp = NSWorkspace.shared.frontmostApplication {
+                if frontApp != .current {
+                    previousFrontmostApplication = frontApp
+                }
                 NSRunningApplication.current.activate(from: frontApp)
             } else {
                 NSApp.activate()
@@ -265,10 +268,10 @@ final class AppState: ObservableObject {
             NSApp.setActivationPolicy(policy)
         }
 
-        if Context.hasActivated.value(for: self) == true {
+        if hasActivated {
             activate()
         } else {
-            Context.hasActivated.set(true, for: self)
+            hasActivated = true
             Logger.appState.debug("First time activating app, so going through Dock")
             // Hack to make sure the app properly activates for the first time.
             NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock").first?.activate()
@@ -280,8 +283,11 @@ final class AppState: ObservableObject {
 
     /// Deactivates the app and sets its activation policy to the given value.
     func deactivate(withPolicy policy: NSApplication.ActivationPolicy) {
-        if let nextApp = NSWorkspace.shared.runningApplications.first(where: { $0 != .current }) {
-            NSApp.yieldActivation(to: nextApp)
+        if
+            let previousApp = previousFrontmostApplication,
+            !previousApp.isTerminated
+        {
+            NSApp.yieldActivation(to: previousApp)
         } else {
             NSApp.deactivate()
         }
