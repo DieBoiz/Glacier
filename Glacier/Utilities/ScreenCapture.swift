@@ -79,7 +79,7 @@ enum ScreenCapture {
         let bounds = screenBounds ?? .null
         // ScreenCaptureKit doesn't support capturing images of offscreen menu bar
         // items, so we unfortunately have to use the deprecated CGWindowList API.
-        return CGImage(windowListFromArrayScreenBounds: bounds, windowArray: array, imageOption: option)
+        return WindowList.createImage(screenBounds: bounds, windowArray: array, option: option)
     }
 
     /// Captures an image of a window.
@@ -91,5 +91,22 @@ enum ScreenCapture {
     ///   - option: Options that specify which parts of the window are captured.
     static func captureWindow(with windowID: CGWindowID, screenBounds: CGRect? = nil, option: CGWindowImageOption = []) -> CGImage? {
         captureWindows(with: [windowID], screenBounds: screenBounds, option: option)
+    }
+}
+
+/// Access to the `CGWindowList` image capture function, which newer SDKs mark as unavailable
+/// even though the system still provides it.
+private enum WindowList {
+    private typealias CreateImage = @convention(c) (CGRect, CFArray, CGWindowImageOption) -> Unmanaged<CGImage>?
+
+    private static let createImageFunction: CreateImage? = {
+        guard let symbol = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "CGWindowListCreateImageFromArray") else {
+            return nil
+        }
+        return unsafeBitCast(symbol, to: CreateImage.self)
+    }()
+
+    static func createImage(screenBounds: CGRect, windowArray: CFArray, option: CGWindowImageOption) -> CGImage? {
+        createImageFunction?(screenBounds, windowArray, option)?.takeRetainedValue()
     }
 }

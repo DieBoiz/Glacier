@@ -6,7 +6,7 @@ import PackageDescription
 // through the synchronized `Glacier` folder group.
 let package = Package(
     name: "GlacierMacOS27Core",
-    platforms: [.macOS(.v14)],
+    platforms: [.macOS("27.0")],
     targets: [
         .target(
             name: "GlacierMacOS27Core",
