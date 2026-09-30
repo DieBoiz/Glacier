@@ -20,6 +20,8 @@ final class MenuBarSearchPanel: NSPanel {
     /// Storage for internal observers.
     private var cancellables = Set<AnyCancellable>()
 
+    private var showGeneration = 0
+
     /// Monitor for mouse down events.
     private lazy var mouseDownMonitor = UniversalEventMonitor(
         mask: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
@@ -98,11 +100,18 @@ final class MenuBarSearchPanel: NSPanel {
             return
         }
 
+        showGeneration += 1
+        let generation = showGeneration
+
         // Important that we set the navigation state before updating the cache.
         appState.navigationState.isSearchPresented = true
 
         if ScreenCapture.cachedCheckPermissions() {
             await appState.imageCache.updateCache()
+
+            guard generation == showGeneration else {
+                return
+            }
         }
 
         let hostingView = MenuBarSearchHostingView(appState: appState, panel: self)
@@ -135,6 +144,7 @@ final class MenuBarSearchPanel: NSPanel {
 
     /// Dismisses the search panel.
     override func close() {
+        showGeneration += 1
         super.close()
         contentView = nil
         mouseDownMonitor.stop()

@@ -17,6 +17,8 @@ final class IceBarPanel: NSPanel {
 
     private var cancellables = Set<AnyCancellable>()
 
+    private var showGeneration = 0
+
     init(appState: AppState) {
         super.init(
             contentRect: .zero,
@@ -156,14 +158,25 @@ final class IceBarPanel: NSPanel {
             return
         }
 
+        showGeneration += 1
+        let generation = showGeneration
+
         // Important that we set the navigation state and current section before updating the cache.
         appState.navigationState.isIceBarPresented = true
         currentSection = section
 
         await appState.itemManager.cacheItemsIfNeeded()
 
+        guard generation == showGeneration else {
+            return
+        }
+
         if ScreenCapture.cachedCheckPermissions() {
             await appState.imageCache.updateCache()
+
+            guard generation == showGeneration else {
+                return
+            }
         }
 
         contentView = IceBarHostingView(appState: appState, colorManager: colorManager, screen: screen, section: section) { [weak self] in
@@ -182,6 +195,7 @@ final class IceBarPanel: NSPanel {
     }
 
     override func close() {
+        showGeneration += 1
         super.close()
         contentView = nil
         currentSection = nil
@@ -356,30 +370,25 @@ private struct IceBarItemView: View {
     let item: MenuBarItem
     let closePanel: () -> Void
 
-    private var leftClickAction: () -> Void {
+    private func clickAction(for mouseButton: CGMouseButton) -> () -> Void {
         return { [weak itemManager] in
             guard let itemManager else {
                 return
             }
             closePanel()
             Task {
-                try await Task.sleep(for: .milliseconds(25))
-                itemManager.tempShowItem(item, clickWhenFinished: true, mouseButton: .left)
+                try? await Task.sleep(for: .milliseconds(25))
+                itemManager.tempShowItem(item, clickWhenFinished: true, mouseButton: mouseButton)
             }
         }
     }
 
+    private var leftClickAction: () -> Void {
+        clickAction(for: .left)
+    }
+
     private var rightClickAction: () -> Void {
-        return { [weak itemManager] in
-            guard let itemManager else {
-                return
-            }
-            closePanel()
-            Task {
-                try await Task.sleep(for: .milliseconds(25))
-                itemManager.tempShowItem(item, clickWhenFinished: true, mouseButton: .right)
-            }
-        }
+        clickAction(for: .right)
     }
 
     private var image: NSImage? {
