@@ -15,7 +15,7 @@ final class Hotkey: ObservableObject {
     /// The hotkey's key combination.
     @Published var keyCombination: KeyCombination? {
         didSet {
-            enable()
+            updateListener()
         }
     }
 
@@ -28,10 +28,8 @@ final class Hotkey: ObservableObject {
     /// The hotkey's action.
     let action: HotkeyAction
 
-    /// A Boolean value that indicates whether the hotkey is enabled.
-    var isEnabled: Bool {
-        listener != nil
-    }
+    /// A Boolean value that indicates whether the hotkey is allowed to be registered.
+    private(set) var isEnabled = true
 
     /// Creates a hotkey with the given action and key combination.
     init(action: HotkeyAction, keyCombination: KeyCombination? = nil) {
@@ -42,19 +40,28 @@ final class Hotkey: ObservableObject {
     /// Performs the initial setup of the hotkey.
     func performSetup(with appState: AppState) {
         self.appState = appState
-        enable()
+        updateListener()
     }
 
     /// Enables the hotkey.
     func enable() {
-        disable()
-        listener = Listener(hotkey: self, eventKind: .keyDown)
+        isEnabled = true
+        updateListener()
     }
 
     /// Disables the hotkey.
     func disable() {
+        isEnabled = false
+        updateListener()
+    }
+
+    /// Replaces the listener to match the hotkey's current state.
+    private func updateListener() {
         listener?.invalidate()
         listener = nil
+        if isEnabled {
+            listener = Listener(hotkey: self, eventKind: .keyDown)
+        }
     }
 }
 

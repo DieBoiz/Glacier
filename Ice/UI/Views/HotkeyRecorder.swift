@@ -67,7 +67,7 @@ struct HotkeyRecorder<Label: View>: View {
         Button {
             if model.isRecording {
                 model.stopRecording()
-            } else if model.hotkey.isEnabled {
+            } else if model.hotkey.keyCombination != nil {
                 model.hotkey.keyCombination = nil
             } else {
                 model.startRecording()
@@ -88,12 +88,8 @@ struct HotkeyRecorder<Label: View>: View {
     private var leadingSegmentLabel: some View {
         if model.isRecording {
             Text("Type Hotkey")
-        } else if model.hotkey.isEnabled {
-            if let keyCombination = model.hotkey.keyCombination {
-                Text(keyCombination.displayValue)
-            } else {
-                Text("ERROR")
-            }
+        } else if let keyCombination = model.hotkey.keyCombination {
+            Text(keyCombination.displayValue)
         } else {
             Text("Record Hotkey")
         }
@@ -103,7 +99,7 @@ struct HotkeyRecorder<Label: View>: View {
     private var trailingSegmentLabel: some View {
         let (name, label, padding) = if model.isRecording {
             ("escape", "Cancel", 6.0)
-        } else if model.hotkey.isEnabled {
+        } else if model.hotkey.keyCombination != nil {
             ("xmark", "Clear", 7.5)
         } else {
             ("record.circle", "Record", 5.5)
