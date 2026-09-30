@@ -21,7 +21,7 @@ struct Logger {
     }
 
     /// Logs the given debug message to the logger.
-    func debug(_ message: @autoclosure () -> String) {
+    func debug(_ message: @autoclosure @escaping () -> String) {
         base.debug("\(message(), privacy: .public)")
     }
 
