@@ -54,7 +54,7 @@ final class MenuBarSection {
     /// is outside of the menu bar.
     private var rehideMonitor: EventMonitor?
 
-    /// A Boolean value that indicates whether the Ice Bar should be used.
+    /// A Boolean value that indicates whether the Glacier Bar should be used.
     private var useGlacierBar: Bool {
         appState?.settings.general.useGlacierBar ?? false
     }
@@ -64,8 +64,8 @@ final class MenuBarSection {
         appState?.menuBarManager
     }
 
-    /// The best screen to show the Ice Bar on.
-    /// Uses the screen under the mouse so Ice Bar appears on the correct
+    /// The best screen to show the Glacier Bar on.
+    /// Uses the screen under the mouse so Glacier Bar appears on the correct
     /// display when using multiple monitors (e.g. external monitor).
     private weak var screenForGlacierBar: NSScreen? {
         guard appState != nil else {
@@ -161,7 +161,7 @@ final class MenuBarSection {
 
         if useGlacierBar {
             // Make sure hidden and always-hidden control items are collapsed.
-            // Still update the visible control item (Ice icon) state to show
+            // Still update the visible control item (Glacier icon) state to show
             // its alternate icon.
             for section in menuBarManager.sections {
                 switch section.name {
@@ -188,7 +188,7 @@ final class MenuBarSection {
             return // We're done.
         }
 
-        // If we made it here, we're not using the Ice Bar.
+        // If we made it here, we're not using the Glacier Bar.
         // Make sure it's closed.
         menuBarManager.glacierBarPanel.close()
 
@@ -213,7 +213,7 @@ final class MenuBarSection {
             return
         }
 
-        menuBarManager.glacierBarPanel.close() // Make sure Ice Bar is always closed.
+        menuBarManager.glacierBarPanel.close() // Make sure Glacier Bar is always closed.
         menuBarManager.showOnHoverAllowed = true
 
         switch name {

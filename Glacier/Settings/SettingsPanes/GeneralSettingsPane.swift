@@ -63,7 +63,7 @@ struct GeneralSettingsPane: View {
         LaunchAtLogin.Toggle()
     }
 
-    // MARK: Ice Icon Options
+    // MARK: Glacier Icon Options
 
     @ViewBuilder
     private var glacierIconOptions: some View {
@@ -75,13 +75,13 @@ struct GeneralSettingsPane: View {
 
     @ViewBuilder
     private var showGlacierIcon: some View {
-        Toggle("Show Ice icon", isOn: $settings.showGlacierIcon)
-            .annotation("Click to show hidden menu bar items. Right-click to access Ice's settings.")
+        Toggle("Show Glacier icon", isOn: $settings.showGlacierIcon)
+            .annotation("Click to show hidden menu bar items. Right-click to access Glacier's settings.")
     }
 
     @ViewBuilder
     private var glacierIconPicker: some View {
-        let labelKey = LocalizedStringKey("Ice icon")
+        let labelKey = LocalizedStringKey("Glacier icon")
 
         GlacierMenu(labelKey) {
             Picker(labelKey, selection: $settings.glacierIcon) {
@@ -170,7 +170,7 @@ struct GeneralSettingsPane: View {
         }
     }
 
-    // MARK: Ice Bar Options
+    // MARK: Glacier Bar Options
 
     @ViewBuilder
     private var glacierBarOptions: some View {
@@ -182,7 +182,7 @@ struct GeneralSettingsPane: View {
 
     @ViewBuilder
     private var useGlacierBar: some View {
-        Toggle("Use Ice Bar", isOn: $settings.useGlacierBar)
+        Toggle("Use Glacier Bar", isOn: $settings.useGlacierBar)
             .annotation("Show hidden menu bar items in a separate bar below the menu bar.")
     }
 
@@ -196,11 +196,11 @@ struct GeneralSettingsPane: View {
         .annotation {
             switch settings.glacierBarLocation {
             case .dynamic:
-                Text("The Ice Bar's location changes based on context.")
+                Text("The Glacier Bar's location changes based on context.")
             case .mousePointer:
-                Text("The Ice Bar is centered below the mouse pointer.")
+                Text("The Glacier Bar is centered below the mouse pointer.")
             case .glacierIcon:
-                Text("The Ice Bar is centered below the Ice icon.")
+                Text("The Glacier Bar is centered below the Glacier icon.")
             }
         }
     }

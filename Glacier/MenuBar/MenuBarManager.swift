@@ -40,7 +40,7 @@ final class MenuBarManager: ObservableObject {
     /// A Boolean value that indicates whether the application menus are hidden.
     private var isHidingApplicationMenus = false
 
-    /// The panel that contains the Ice Bar interface.
+    /// The panel that contains the Glacier Bar interface.
     let glacierBarPanel = GlacierBarPanel()
 
     /// The panel that contains the menu bar search interface.
@@ -157,7 +157,7 @@ final class MenuBarManager: ObservableObject {
                 }
 
                 // macOS 27 folds the items that do not fit behind its own overflow button,
-                // so shown items never cover the application menus. Activating Ice there only
+                // so shown items never cover the application menus. Activating Glacier there only
                 // took keyboard focus from the frontmost application (measured).
                 if #available(macOS 27.0, *) {
                     return
@@ -165,7 +165,7 @@ final class MenuBarManager: ObservableObject {
 
                 // Don't continue if:
                 //   * The "HideApplicationMenus" setting isn't enabled.
-                //   * Using the Ice Bar.
+                //   * Using the Glacier Bar.
                 //   * The menu bar is hidden by the system.
                 //   * The active space is fullscreen.
                 //   * The settings window is visible.
@@ -290,7 +290,7 @@ final class MenuBarManager: ObservableObject {
 
     /// Shows the secondary context menu.
     func showSecondaryContextMenu(at point: CGPoint) {
-        let menu = NSMenu(title: "Ice")
+        let menu = NSMenu(title: "Glacier")
 
         let editAppearanceItem = NSMenuItem(
             title: "Edit Menu Bar Appearance…",
@@ -303,7 +303,7 @@ final class MenuBarManager: ObservableObject {
         menu.addItem(.separator())
 
         let settingsItem = NSMenuItem(
-            title: "Ice Settings…",
+            title: "Glacier Settings…",
             action: #selector(AppDelegate.openSettingsWindow),
             keyEquivalent: ","
         )

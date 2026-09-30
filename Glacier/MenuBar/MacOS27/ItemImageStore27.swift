@@ -9,11 +9,11 @@ import ScreenCaptureKit
 
 /// Images of menu bar items on macOS 27, captured from the active menu bar.
 ///
-/// MenuBarAgent draws every item into one menu bar, so Ice's per-item window captures
+/// MenuBarAgent draws every item into one menu bar, so Glacier's per-item window captures
 /// are gone. Only a capture of the display holds the glyphs (measured on macOS 27.0: a
 /// capture of MenuBarAgent's bar window holds just the application menu), and it
 /// includes the bar's background. That background is cut away, leaving the glyph on
-/// transparency, so the Ice Bar and the layout window draw every item on their own
+/// transparency, so the Glacier Bar and the layout window draw every item on their own
 /// colour whatever is behind the menu bar. Items on an inactive bar are drawn dimmer, so
 /// only the active bar is captured. Images are kept on disk, so an item that is concealed
 /// still has one.
@@ -47,7 +47,7 @@ final class ItemImageStore27 {
     private let logger = Logger(category: "ItemImageStore27")
     private nonisolated static let processingLogger = Logger(category: "ItemImageStore27")
     private let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        .appendingPathComponent("Ice/ItemImages", isDirectory: true)
+        .appendingPathComponent("Glacier/ItemImages", isDirectory: true)
     private var index = [String: IndexEntry]()
     private var loaded = [String: CapturedImage]()
     /// A hash of each glyph stored since launch, so an unchanged one is not stored again.
@@ -216,7 +216,7 @@ final class ItemImageStore27 {
         let colour = Self.glyphColor()
         let known = digests
         // Cutting the glyphs out and encoding them is pixel work on every item of the bar, done
-        // on every capture. It runs off the main thread, which the Ice Bar is being drawn on.
+        // on every capture. It runs off the main thread, which the Glacier Bar is being drawn on.
         let processed = await Task.detached(priority: .userInitiated) {
             Self.processTiles(tiles, strip: strip, stripFrame: stripFrame, scale: scale, colour: colour, knownDigests: known)
         }.value
@@ -344,7 +344,7 @@ final class ItemImageStore27 {
             appState.concealer27.endTemporaryShow(bundleID: bundleID)
             // Only an application that came away with an image counts as photographed. One
             // whose tile was refused, or whose item macOS folded away, would otherwise wait
-            // out the full ten minutes with no glyph at all in the Ice Bar.
+            // out the full ten minutes with no glyph at all in the Glacier Bar.
             photoSchedule.recordAttempt(
                 bundleID: bundleID,
                 now: ProcessInfo.processInfo.systemUptime,
@@ -396,7 +396,7 @@ final class ItemImageStore27 {
     }
 
     /// The colour glyphs are drawn in, which is the readable one on the flat background
-    /// the Ice Bar and the layout window use.
+    /// the Glacier Bar and the layout window use.
     private static func glyphColor() -> (r: UInt8, g: UInt8, b: UInt8) {
         let isDark = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
         return isDark ? (255, 255, 255) : (0, 0, 0)
@@ -454,7 +454,7 @@ final class ItemImageStore27 {
         let background = ItemImages27.backgroundColor(pixels: pixels, width: width, height: height)
         let removed = ItemImages27.removingBackground(pixels: pixels, width: width, height: height, background: background, tone: tone)
         // An item caught mid-fade cannot be rescued by any background estimate: what is left
-        // is a faint glyph inside a wide haze of bar, and storing it is what made the Ice
+        // is a faint glyph inside a wide haze of bar, and storing it is what made the Glacier
         // Bar's icons pale and too wide. Refuse the tile; the item is photographed again
         // later, standing still. This comes before faint marks are dropped, or a faded glyph
         // would be dropped whole and stored as an empty tile.

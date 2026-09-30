@@ -5,7 +5,7 @@
 //  Adapted from Barometer's MenuBarAssessmentAssertion.swift
 //  (https://github.com/mackid1993/Barometer), itself adapted from Thaw's
 //  PlatformRuntimeKit (https://github.com/thaw-app/Thaw). Both are licensed
-//  under the GNU GPLv3, like Ice.
+//  under the GNU GPLv3, like Glacier.
 //
 
 import Foundation
@@ -59,7 +59,7 @@ final class MenuBarAssessmentAssertion27: ConcealmentBackend27 {
     private static let activateSelector = NSSelectorFromString("activateWithConfiguration:completionHandler:")
     private static let invalidateSelector = NSSelectorFromString("invalidate")
 
-    /// MenuBarAgent numbers its system items 0 through 8 on macOS 27.0. Ice keeps all of them,
+    /// MenuBarAgent numbers its system items 0 through 8 on macOS 27.0. Glacier keeps all of them,
     /// and allows numbers well past 8 so that items a later macOS adds are not hidden: numbers
     /// with no item behind them are ignored (measured on macOS 27.0 with 0 through 63).
     private static let systemItems = (0...63).map { NSNumber(value: $0) } as NSArray

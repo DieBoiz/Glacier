@@ -7,14 +7,14 @@ import AppKit
 import ApplicationServices
 import OSLog
 
-/// Opens a hidden item's menu from the Ice Bar on macOS 27.
+/// Opens a hidden item's menu from the Glacier Bar on macOS 27.
 ///
-/// Ice can no longer move an item into view. Its application is allowed for a moment, and
-/// the drawn item is clicked where it appears, the way Ice clicks items on earlier macOS,
+/// Glacier can no longer move an item into view. Its application is allowed for a moment, and
+/// the drawn item is clicked where it appears, the way Glacier clicks items on earlier macOS,
 /// with the pointer put back afterwards. An item that is not drawn, such as one folded
 /// behind the overflow button, is pressed through Accessibility. Menus open on the display
-/// with the active menu bar, so if that is not the Ice Bar's display, Ice first clicks the
-/// empty spot of that display's menu bar where the Ice Bar was opened (measured on
+/// with the active menu bar, so if that is not the Glacier Bar's display, Glacier first clicks the
+/// empty spot of that display's menu bar where the Glacier Bar was opened (measured on
 /// macOS 27.0: that click makes the menu bar active). The click comes before the
 /// application is shown, while the spot is still empty.
 @available(macOS 27.0, *)
@@ -95,7 +95,7 @@ enum ItemClicker27 {
         postClick(at: point, mouseButton: .left)
     }
 
-    /// Posts a click marked so that Ice's own mouse handlers ignore it, then puts the pointer back.
+    /// Posts a click marked so that Glacier's own mouse handlers ignore it, then puts the pointer back.
     private static func postClick(at point: CGPoint, mouseButton: CGMouseButton) {
         let source = CGEventSource(stateID: .hidSystemState)
         let original = CGEvent(source: nil)?.location

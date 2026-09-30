@@ -388,8 +388,8 @@ private struct MenuBarSearchContentView: View {
         closePanel()
         Task {
             try await Task.sleep(for: .milliseconds(25))
-            // Ice cannot move an item into view on macOS 27, so the item is clicked
-            // the way the Ice Bar clicks it.
+            // Glacier cannot move an item into view on macOS 27, so the item is clicked
+            // the way the Glacier Bar clicks it.
             if #available(macOS 27.0, *), let appState = itemManager.appState {
                 await ItemClicker27.click(item: item, mouseButton: .left, glacierBarDisplayID: displayID, appState: appState)
                 return

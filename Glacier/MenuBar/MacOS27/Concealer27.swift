@@ -7,13 +7,13 @@ import Cocoa
 import Combine
 import OSLog
 
-/// Hides menu bar items on macOS 27, where Ice's expanding dividers no longer work.
+/// Hides menu bar items on macOS 27, where Glacier's expanding dividers no longer work.
 ///
 /// On macOS 27 the section of each application comes from a saved layout, first
-/// taken from the user's Ice layout: MenuBarAgent reorders items on its own, so their
+/// taken from the user's Glacier layout: MenuBarAgent reorders items on its own, so their
 /// order on the bar no longer says which section they belong to. The concealer hides
 /// applications through `MenuBarAssessmentAssertion27`, following that layout and the
-/// state of Ice's sections.
+/// state of Glacier's sections.
 @available(macOS 27.0, *)
 @MainActor
 final class Concealer27 {
@@ -81,7 +81,7 @@ final class Concealer27 {
         })
         // Entering or leaving fullscreen swaps the menu bar the items are drawn in, and nothing
         // else here notices: the concealment was left exactly as the previous bar had it, so
-        // Ice's own item was missing from the bar that slides down over a fullscreen window and
+        // Glacier's own item was missing from the bar that slides down over a fullscreen window and
         // there was nothing to click. `HIDEventManager` watches the same publisher, for the same
         // reason, on earlier versions of macOS.
         appState.$activeSpace
@@ -108,7 +108,7 @@ final class Concealer27 {
         update()
     }
 
-    /// Derives what to conceal from Ice's sections and applies it.
+    /// Derives what to conceal from Glacier's sections and applies it.
     func update() {
         guard let appState, MenuBarAssessmentAssertion27.isAvailable else {
             return
@@ -362,7 +362,7 @@ final class Concealer27 {
             return .allRevealed
         }
         if appState.settings.general.useGlacierBar {
-            // The Ice Bar shows hidden items in its own panel, so the bar stays concealed.
+            // The Glacier Bar shows hidden items in its own panel, so the bar stays concealed.
             return .allHidden
         }
         let manager = appState.menuBarManager

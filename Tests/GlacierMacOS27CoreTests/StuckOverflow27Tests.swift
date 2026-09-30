@@ -58,7 +58,7 @@ struct StuckOverflow27Tests {
         #expect(!StuckOverflow27.isStuck(visibleItemFrames: frames, chevronFrame: nil, notchSpan: nil))
     }
 
-    @Test("Ice's collapsed items do not count")
+    @Test("Glacier's collapsed items do not count")
     func collapsed() {
         let frames = [CGRect(x: 1400, y: 2, width: 0, height: 24), CGRect(x: 1400, y: 2, width: 30, height: 24)]
         #expect(!StuckOverflow27.isStuck(visibleItemFrames: frames, chevronFrame: nil, notchSpan: notch))

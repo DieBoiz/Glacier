@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Builds Ice and installs it, signed.
+# Builds Glacier and installs it, signed.
 #
 # Replaces the project's "Copy to Applications" build phase, which cannot work:
 # Xcode signs a target *after* its script phases run, so that phase always copies
@@ -14,7 +14,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEST="${DEST:-$HOME/Applications}"
-DERIVED="${DERIVED:-/tmp/ice-build}"
+DERIVED="${DERIVED:-/tmp/glacier-build}"
 
 echo "==> Building"
 xcodebuild -project "$ROOT/Glacier.xcodeproj" -scheme Glacier -configuration Release \
@@ -30,13 +30,13 @@ codesign --verify --deep --strict "$APP"
 codesign -dv "$APP" 2>&1 | grep -E 'Identifier=|TeamIdentifier=' | sed 's/^/    /'
 
 echo "==> Installing to $DEST"
-if pgrep -x Ice >/dev/null 2>&1; then
-    osascript -e 'quit app "Ice"' >/dev/null 2>&1 || true
+if pgrep -x Glacier >/dev/null 2>&1; then
+    osascript -e 'quit app "Glacier"' >/dev/null 2>&1 || true
     for _ in 1 2 3 4 5 6 7 8 9 10; do
-        pgrep -x Ice >/dev/null 2>&1 || break
+        pgrep -x Glacier >/dev/null 2>&1 || break
         sleep 0.3
     done
-    pgrep -x Ice >/dev/null 2>&1 && pkill -x Ice || true
+    pgrep -x Glacier >/dev/null 2>&1 && pkill -x Glacier || true
 fi
 
 mkdir -p "$DEST"

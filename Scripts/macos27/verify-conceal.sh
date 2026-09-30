@@ -1,10 +1,10 @@
 #!/bin/bash
 #
-# Verifies plan 1 on macOS 27: Ice hides the hidden and always-hidden sections soon
+# Verifies plan 1 on macOS 27: Glacier hides the hidden and always-hidden sections soon
 # after launch, reveals the hidden section on hover without exposing always-hidden items, and
-# every item comes back when Ice quits.
+# every item comes back when Glacier quits.
 #
-# Requirements: Ice installed with Scripts/install.sh, Thaw not running, the
+# Requirements: Glacier installed with Scripts/install.sh, Thaw not running, the
 # external display at the origin, and no app menus reaching into REGION.
 #
 # Usage: Scripts/macos27/verify-conceal.sh [empty-x] [empty-y]
@@ -17,7 +17,7 @@ EMPTY_Y="${2:-12}"
 REGION="${REGION:-700,0,1220,34}"
 IFS=, read -r REGION_X _ REGION_W _ <<< "$REGION"
 CYCLES="${CYCLES:-10}"
-WORK="$(mktemp -d /tmp/ice-verify-conceal.XXXXXX)"
+WORK="$(mktemp -d /tmp/glacier-verify-conceal.XXXXXX)"
 mkdir -p "$WORK/bin" "$WORK/steady" "$WORK/cycles"
 
 swiftc -O "$ROOT/Scripts/macos27/pointer.swift" -o "$WORK/bin/pointer"
@@ -26,7 +26,7 @@ swiftc -O "$ROOT/Scripts/macos27/analyze-frames.swift" -o "$WORK/bin/analyze-fra
 now() { perl -MTime::HiRes=time -e 'printf "%.3f", time'; }
 quit_ice() {
     osascript -e 'tell application id "de.nlmyr.glacier" to quit' >/dev/null 2>&1 || true
-    for _ in $(seq 1 40); do pgrep -x Ice >/dev/null || return 0; sleep 0.25; done
+    for _ in $(seq 1 40); do pgrep -x Glacier >/dev/null || return 0; sleep 0.25; done
 }
 # The bar draws its items dimmer while it is inactive, which moves the measured edge by a
 # few points, so steady captures are taken with the starting application frontmost.
@@ -44,9 +44,9 @@ ORIGINAL_GLACIER_BAR=$(as_bool "$(defaults read de.nlmyr.glacier UseGlacierBar 2
 ORIGINAL_HOVER=$(as_bool "$(defaults read de.nlmyr.glacier ShowOnHover 2>/dev/null || echo 1)")
 start_ice() {
     open "$HOME/Applications/Glacier.app"
-    for _ in $(seq 1 40); do pgrep -x Ice >/dev/null && return 0; sleep 0.25; done
+    for _ in $(seq 1 40); do pgrep -x Glacier >/dev/null && return 0; sleep 0.25; done
 }
-# Leave Ice running, the way the run found it. A run that ended with Ice down left the
+# Leave Glacier running, the way the run found it. A run that ended with Glacier down left the
 # machine concealing nothing, and whatever was looked at next showed nothing worth seeing.
 restore() {
     quit_ice
@@ -101,6 +101,6 @@ check "always-hidden items stay hidden while revealed" "[ $REVEALED -gt $((ALL_V
 # The reveal animation overshoots its resting place by up to 4 pt (measured). An
 # always-hidden item that flashes moves the edge by a whole item, at least 24 pt.
 check "always-hidden items never flash in $CYCLES cycles" "[ $LOWEST -ge $((REVEALED - 10)) ]"
-check "every item returns when Ice quits" "[ $AFTER_QUIT -ge $((ALL_VISIBLE - 3)) ] && [ $AFTER_QUIT -le $((ALL_VISIBLE + 3)) ]"
+check "every item returns when Glacier quits" "[ $AFTER_QUIT -ge $((ALL_VISIBLE - 3)) ] && [ $AFTER_QUIT -le $((ALL_VISIBLE + 3)) ]"
 echo "frames: $WORK"
 exit $FAILED

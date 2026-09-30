@@ -19,5 +19,5 @@ enum Constants {
     static let bundleIdentifier = Bundle.main.bundleIdentifier ?? "de.nlmyr.glacier"
 
     /// The app's display name.
-    static let displayName = Bundle.main.displayName ?? "Ice"
+    static let displayName = Bundle.main.displayName ?? "Glacier"
 }

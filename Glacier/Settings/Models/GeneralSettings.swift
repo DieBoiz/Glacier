@@ -12,7 +12,7 @@ import SwiftUI
 /// Model for the app's General settings.
 @MainActor
 final class GeneralSettings: ObservableObject {
-    /// A Boolean value that indicates whether the Ice icon
+    /// A Boolean value that indicates whether the Glacier icon
     /// should be shown.
     @Published var showGlacierIcon = true
 
@@ -20,10 +20,10 @@ final class GeneralSettings: ObservableObject {
     /// for when items are visible or hidden.
     @Published var glacierIcon: ControlItemImageSet = .defaultGlacierIcon
 
-    /// The last user-selected custom Ice icon.
+    /// The last user-selected custom Glacier icon.
     @Published var lastCustomGlacierIcon: ControlItemImageSet?
 
-    /// A Boolean value that indicates whether custom Ice icons
+    /// A Boolean value that indicates whether custom Glacier icons
     /// should be rendered as template images.
     @Published var customGlacierIconIsTemplate = false
 
@@ -31,7 +31,7 @@ final class GeneralSettings: ObservableObject {
     /// in a separate bar below the menu bar.
     @Published var useGlacierBar = false
 
-    /// The location where the Ice Bar appears.
+    /// The location where the Glacier Bar appears.
     @Published var glacierBarLocation: GlacierBarLocation = .dynamic
 
     /// A Boolean value that indicates whether the hidden section
@@ -109,7 +109,7 @@ final class GeneralSettings: ObservableObject {
             do {
                 glacierIcon = try decoder.decode(ControlItemImageSet.self, from: data)
             } catch {
-                Logger.serialization.error("Error decoding Ice icon: \(error, privacy: .public)")
+                Logger.serialization.error("Error decoding Glacier icon: \(error, privacy: .public)")
             }
             if case .custom = glacierIcon.name {
                 lastCustomGlacierIcon = glacierIcon
@@ -141,7 +141,7 @@ final class GeneralSettings: ObservableObject {
                     let data = try encoder.encode(glacierIcon)
                     Defaults.set(data, forKey: .glacierIcon)
                 } catch {
-                    Logger.serialization.error("Error encoding Ice icon: \(error, privacy: .public)")
+                    Logger.serialization.error("Error encoding Glacier icon: \(error, privacy: .public)")
                 }
             }
             .store(in: &c)

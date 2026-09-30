@@ -1,13 +1,13 @@
 // Measures how short the concealment lift around a replayed click can be before the clock
 // stops opening Notification Center, on each display.
 //
-// Ice lifts concealment so MenuBarAgent will accept the click, then puts it back. Every
+// Glacier lifts concealment so MenuBarAgent will accept the click, then puts it back. Every
 // millisecond of the lift is a millisecond of the bar moving, and the movement is what makes
 // the panel's animation stutter — so the lift wants to be as short as it can be without
 // losing clicks.
 //
 // usage: clock-restore [repetitions] [delay ...]      (delays in milliseconds)
-// Requirements: Ice installed and running, Thaw not running. Takes the pointer.
+// Requirements: Glacier installed and running, Thaw not running. Takes the pointer.
 import AppKit
 import ApplicationServices
 
@@ -28,7 +28,7 @@ func frame(_ element: AXUIElement) -> CGRect {
     return CGRect(origin: position, size: size)
 }
 
-/// The windows on screen, as Ice judges a panel by them.
+/// The windows on screen, as Glacier judges a panel by them.
 func panelWindows() -> [(number: Int, layer: Int, height: CGFloat)] {
     let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
     return list.compactMap { window in
@@ -152,7 +152,7 @@ for delay in delays {
     }
 }
 
-// Leave the default unset, so Ice's own measured value decides again.
+// Leave the default unset, so Glacier's own measured value decides again.
 let clear = Process()
 clear.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
 clear.arguments = ["delete", "de.nlmyr.glacier", "MacOS27ClickRestoreDelay"]

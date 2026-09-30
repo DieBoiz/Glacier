@@ -188,7 +188,7 @@ final class GlacierBarColorManager: ObservableObject {
     ///
     /// Item images are cut out of a capture of the bar, so a colour read off the bar
     /// would only match the moment of that capture: when a dark window later sits under
-    /// the menu bar, or the Ice Bar opens on the other display, the panel and the items
+    /// the menu bar, or the Glacier Bar opens on the other display, the panel and the items
     /// disagree. A flat colour that follows the system appearance always agrees with the
     /// glyphs, which the capture takes in that same appearance.
     static func flatColor27() -> CGColor {

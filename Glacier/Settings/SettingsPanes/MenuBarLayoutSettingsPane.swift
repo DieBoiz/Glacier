@@ -42,7 +42,7 @@ struct MenuBarLayoutSettingsPane: View {
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.secondary)
                 if #available(macOS 27.0, *), !MenuBarAssessmentAssertion27.isAvailable {
-                    Text("Ice cannot hide items on this version of macOS: the system interface it relies on is missing.")
+                    Text("Glacier cannot hide items on this version of macOS: the system interface it relies on is missing.")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(.red)
                         .multilineTextAlignment(.center)
@@ -71,7 +71,7 @@ struct MenuBarLayoutSettingsPane: View {
 
     @ViewBuilder
     private var cannotArrange: some View {
-        Text("Ice cannot arrange menu bar items in automatically hidden menu bars.")
+        Text("Glacier cannot arrange menu bar items in automatically hidden menu bars.")
             .font(.title3)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }

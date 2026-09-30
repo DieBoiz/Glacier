@@ -1,10 +1,10 @@
 #!/bin/bash
 #
-# Verifies the Ice Bar on macOS 27: hovering an empty spot of a menu bar opens the Ice
+# Verifies the Glacier Bar on macOS 27: hovering an empty spot of a menu bar opens the Glacier
 # Bar on that display only, with an image of every hidden application's items, without
 # taking the front from the active application; moving away closes it.
 #
-# Requirements: Ice installed with Scripts/install.sh, EXT_APP with a window on the
+# Requirements: Glacier installed with Scripts/install.sh, EXT_APP with a window on the
 # external display, MacOS27Layout set. Leave the mouse and keyboard alone.
 #
 # Usage: Scripts/macos27/verify-glacierbar.sh <ext-empty-x> <ext-empty-y> <builtin-empty-x> <builtin-empty-y>
@@ -13,7 +13,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 EXT_X="$1"; EXT_Y="$2"; BUILTIN_X="$3"; BUILTIN_Y="$4"
 EXT_APP="${EXT_APP:-Safari}"
-WORK="$(mktemp -d /tmp/ice-verify-glacierbar.XXXXXX)"
+WORK="$(mktemp -d /tmp/glacier-verify-glacierbar.XXXXXX)"
 mkdir -p "$WORK/bin"
 swiftc -O "$ROOT/Scripts/macos27/pointer.swift" -o "$WORK/bin/pointer"
 swiftc -O "$ROOT/Scripts/macos27/glacierbar-ax.swift" -o "$WORK/bin/glacierbar-ax"
@@ -21,7 +21,7 @@ swiftc -O "$ROOT/Scripts/macos27/ax-items.swift" -o "$WORK/bin/ax-items"
 
 quit_ice() {
     osascript -e 'tell application id "de.nlmyr.glacier" to quit' >/dev/null 2>&1 || true
-    for _ in $(seq 1 40); do pgrep -x Ice >/dev/null || return 0; sleep 0.25; done
+    for _ in $(seq 1 40); do pgrep -x Glacier >/dev/null || return 0; sleep 0.25; done
 }
 front_app() {
     osascript -e 'tell application "System Events" to get name of first process whose frontmost is true'
@@ -31,9 +31,9 @@ ORIGINAL_GLACIER_BAR=$(as_bool "$(defaults read de.nlmyr.glacier UseGlacierBar 2
 ORIGINAL_HOVER=$(as_bool "$(defaults read de.nlmyr.glacier ShowOnHover 2>/dev/null || echo 1)")
 start_ice() {
     open "$HOME/Applications/Glacier.app"
-    for _ in $(seq 1 40); do pgrep -x Ice >/dev/null && return 0; sleep 0.25; done
+    for _ in $(seq 1 40); do pgrep -x Glacier >/dev/null && return 0; sleep 0.25; done
 }
-# Leave Ice running, the way the run found it. A run that ended with Ice down left the
+# Leave Glacier running, the way the run found it. A run that ended with Glacier down left the
 # machine concealing nothing, and whatever was looked at next showed nothing worth seeing.
 restore() {
     quit_ice
@@ -79,11 +79,11 @@ echo "external: panel x=${EXT_PANEL_X:-none}, $EXT_ITEMS images, front $EXT_FRON
 echo "built-in: panel x=${BUILTIN_PANEL_X:-none}, $BUILTIN_ITEMS images, front $BUILTIN_FRONT, after leaving: $(head -1 "$WORK/builtin-after.txt")"
 FAILED=0
 check() { if eval "$2"; then echo "PASS  $1"; else echo "FAIL  $1"; FAILED=1; fi; }
-check "hover on the external bar opens the Ice Bar there" "[ -n '$EXT_PANEL_X' ] && [ '${EXT_PANEL_X:--1}' -ge 0 ]"
-check "hover on the built-in bar opens the Ice Bar there" "[ -n '$BUILTIN_PANEL_X' ] && [ '${BUILTIN_PANEL_X:-0}' -lt 0 ]"
-check "the external Ice Bar shows every hidden application's items" "[ $EXT_ITEMS -ge $EXPECTED ] && [ $EXPECTED -gt 0 ]"
-check "the built-in Ice Bar shows every hidden application's items" "[ $BUILTIN_ITEMS -ge $EXPECTED ] && [ $EXPECTED -gt 0 ]"
-check "opening the Ice Bar keeps the front" "[ '$EXT_FRONT' = '$EXT_APP' ] && [ '$BUILTIN_FRONT' = '$EXT_APP' ]"
-check "the Ice Bar closes after the pointer leaves" "grep -q '^none' '$WORK/ext-after.txt' && grep -q '^none' '$WORK/builtin-after.txt'"
+check "hover on the external bar opens the Glacier Bar there" "[ -n '$EXT_PANEL_X' ] && [ '${EXT_PANEL_X:--1}' -ge 0 ]"
+check "hover on the built-in bar opens the Glacier Bar there" "[ -n '$BUILTIN_PANEL_X' ] && [ '${BUILTIN_PANEL_X:-0}' -lt 0 ]"
+check "the external Glacier Bar shows every hidden application's items" "[ $EXT_ITEMS -ge $EXPECTED ] && [ $EXPECTED -gt 0 ]"
+check "the built-in Glacier Bar shows every hidden application's items" "[ $BUILTIN_ITEMS -ge $EXPECTED ] && [ $EXPECTED -gt 0 ]"
+check "opening the Glacier Bar keeps the front" "[ '$EXT_FRONT' = '$EXT_APP' ] && [ '$BUILTIN_FRONT' = '$EXT_APP' ]"
+check "the Glacier Bar closes after the pointer leaves" "grep -q '^none' '$WORK/ext-after.txt' && grep -q '^none' '$WORK/builtin-after.txt'"
 echo "work: $WORK"
 exit $FAILED

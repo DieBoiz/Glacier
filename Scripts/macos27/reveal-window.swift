@@ -2,7 +2,7 @@
 // that overlaps the panel's own animation — and so whether the restore delay takes effect.
 //
 // usage: reveal-window [offset ...] -- [delay ...]     (all in milliseconds)
-// Requirements: Ice installed and running and concealing, Thaw not running. Takes the pointer.
+// Requirements: Glacier installed and running and concealing, Thaw not running. Takes the pointer.
 import AppKit
 import ApplicationServices
 import ImageIO
@@ -156,7 +156,7 @@ for delay in delays {
     }
 }
 
-// Leave the default unset, so Ice's own measured value decides again.
+// Leave the default unset, so Glacier's own measured value decides again.
 let clear = Process()
 clear.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
 clear.arguments = ["delete", "de.nlmyr.glacier", "MacOS27ClickRestoreDelay"]

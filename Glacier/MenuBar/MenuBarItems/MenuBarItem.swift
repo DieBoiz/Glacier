@@ -38,7 +38,7 @@ struct MenuBarItem: CustomStringConvertible {
         tag.canBeHidden
     }
 
-    /// A Boolean value that indicates whether this item is one of Ice's
+    /// A Boolean value that indicates whether this item is one of Glacier's
     /// control items.
     var isControlItem: Bool {
         tag.isControlItem

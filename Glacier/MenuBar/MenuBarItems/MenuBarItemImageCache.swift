@@ -117,7 +117,7 @@ final class MenuBarItemImageCache: ObservableObject {
         if let appState {
             // On macOS 27 an update captures the display and reads every application's items
             // twice through Accessibility, so the timer only keeps changing glyphs current.
-            // Opening the Ice Bar, search or the layout, and changes to the items, still
+            // Opening the Glacier Bar, search or the layout, and changes to the items, still
             // update at once.
             let interval: TimeInterval
             if #available(macOS 27.0, *) {

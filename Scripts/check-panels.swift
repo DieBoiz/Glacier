@@ -1,7 +1,7 @@
 //
 //  check-panels.swift
 //
-//  Counts Ice's live windows, grouped by kind. Run with: swift check-panels.swift
+//  Counts Glacier's live windows, grouped by kind. Run with: swift check-panels.swift
 //
 //  Watches for the overlay-panel leak: those are the borderless, unnamed windows
 //  as wide as a display and about as tall as a menu bar. There should be at most
@@ -16,7 +16,7 @@ guard let pid = NSWorkspace.shared.runningApplications
         .processIdentifier,
       let list = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]]
 else {
-    print("Ice is not running")
+    print("Glacier is not running")
     exit(0)
 }
 
@@ -39,7 +39,7 @@ for window in list where (window[kCGWindowOwnerPID as String] as? pid_t) == pid 
     _ = barHeights
 }
 
-print("Ice pid \(pid), \(NSScreen.screens.count) display(s)")
+print("Glacier pid \(pid), \(NSScreen.screens.count) display(s)")
 for (key, count) in counts.sorted(by: { $0.value > $1.value }) {
     let leaking = (overlayLike[key] ?? 0) > 1
     print("  \(count)x  \(key)\(leaking ? "   <-- ACCUMULATING" : "")")

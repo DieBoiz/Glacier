@@ -7,7 +7,7 @@ import Foundation
 
 /// Identifiers for menu bar items that have no WindowServer window on macOS 27.
 ///
-/// Ice's item model is keyed by window identifier. Real identifiers are small
+/// Glacier's item model is keyed by window identifier. Real identifiers are small
 /// counters, so synthetic ones set the top bit to stay out of their way.
 enum SyntheticWindowID27 {
     static let flag: UInt32 = 0x8000_0000

@@ -13,7 +13,7 @@ final class GlacierBarPanel: NSPanel {
     /// The shared app state.
     private weak var appState: AppState?
 
-    /// Manager for the Ice Bar's color.
+    /// Manager for the Glacier Bar's color.
     private let colorManager = GlacierBarColorManager()
 
     /// The currently displayed section.
@@ -24,7 +24,7 @@ final class GlacierBarPanel: NSPanel {
 
     private var showGeneration = 0
 
-    /// Creates a new Ice Bar panel.
+    /// Creates a new Glacier Bar panel.
     init() {
         super.init(
             contentRect: .zero,
@@ -32,7 +32,7 @@ final class GlacierBarPanel: NSPanel {
             backing: .buffered,
             defer: false
         )
-        self.title = "Ice Bar"
+        self.title = "Glacier Bar"
         self.titlebarAppearsTransparent = true
         self.isMovableByWindowBackground = true
         self.allowsToolTipsWhenApplicationIsInactive = true
@@ -226,7 +226,7 @@ final class GlacierBarPanel: NSPanel {
         if #available(macOS 27.0, *) {
             let elapsed = (ContinuousClock.now - requestedAt).components
             let milliseconds = Double(elapsed.seconds) * 1000 + Double(elapsed.attoseconds) / 1e15
-            Logger.default.debug("Ice Bar shown \(milliseconds, privacy: .public) ms after it was requested")
+            Logger.default.debug("Glacier Bar shown \(milliseconds, privacy: .public) ms after it was requested")
         }
     }
 
@@ -380,7 +380,7 @@ private struct GlacierBarContentView: View {
     private var content: some View {
         if !ScreenCapture.cachedCheckPermissions() {
             HStack {
-                Text("The Ice Bar requires screen recording permissions.")
+                Text("The Glacier Bar requires screen recording permissions.")
 
                 Button {
                     menuBarManager.section(withName: section)?.hide()
@@ -388,14 +388,14 @@ private struct GlacierBarContentView: View {
                     appState.activate(withPolicy: .regular)
                     appState.openWindow(.settings)
                 } label: {
-                    Text("Open Ice Settings")
+                    Text("Open Glacier Settings")
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.link)
             }
             .padding(.horizontal, 10)
         } else if menuBarManager.isMenuBarHiddenBySystemUserDefaults {
-            Text("Ice cannot display menu bar items for automatically hidden menu bars")
+            Text("Glacier cannot display menu bar items for automatically hidden menu bars")
                 .padding(.horizontal, 10)
         } else if itemManager.itemCache.managedItems.isEmpty {
             HStack {

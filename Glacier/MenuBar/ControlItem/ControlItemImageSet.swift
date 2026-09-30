@@ -36,14 +36,14 @@ struct ControlItemImageSet: Codable, Hashable, Identifiable {
 }
 
 extension ControlItemImageSet {
-    /// The default image set for the Ice icon.
+    /// The default image set for the Glacier icon.
     static let defaultGlacierIcon = ControlItemImageSet(
         name: .dot,
         hidden: .catalog("DotFill"),
         visible: .catalog("DotStroke")
     )
 
-    /// The image sets that the user can choose to display in the Ice icon.
+    /// The image sets that the user can choose to display in the Glacier icon.
     static let userSelectableGlacierIcons = [
         ControlItemImageSet(
             name: .arrow,

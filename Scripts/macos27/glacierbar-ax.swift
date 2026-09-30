@@ -1,5 +1,5 @@
-// Prints the Ice Bar panel's frame and, for each item image it shows, "item <x> <y> <label>".
-// Prints "none" when no Ice Bar is on screen. Read from Ice's Accessibility tree.
+// Prints the Glacier Bar panel's frame and, for each item image it shows, "item <x> <y> <label>".
+// Prints "none" when no Glacier Bar is on screen. Read from Glacier's Accessibility tree.
 import AppKit
 import ApplicationServices
 
@@ -38,11 +38,11 @@ func images(in element: AXUIElement, depth: Int = 0) -> [(CGRect, String)] {
     return result
 }
 
-guard let ice = NSRunningApplication.runningApplications(withBundleIdentifier: "de.nlmyr.glacier").first else {
+guard let glacier = NSRunningApplication.runningApplications(withBundleIdentifier: "de.nlmyr.glacier").first else {
     print("none")
     exit(0)
 }
-let app = AXUIElementCreateApplication(ice.processIdentifier)
+let app = AXUIElementCreateApplication(glacier.processIdentifier)
 AXUIElementSetMessagingTimeout(app, 2)
 let panels = (value(app, kAXWindowsAttribute) as? [AXUIElement] ?? []).compactMap { window -> (CGRect, [(CGRect, String)])? in
     guard let f = frame(window), f.height < 90, f.width > 20, f.width < 1400 else {

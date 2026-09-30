@@ -505,10 +505,10 @@ enum ItemImages27 {
 
     /// The tags whose frames are the same in both reads, give or take a point.
     ///
-    /// The bar re-lays out whenever an item is shown or hidden, or when Ice's own item
+    /// The bar re-lays out whenever an item is shown or hidden, or when Glacier's own item
     /// leaves it, and a capture taken across that re-layout cuts between icons: the stored
     /// images then hold slivers of two neighbours or plain bar (measured on macOS 27.0,
-    /// after the Ice icon was switched off while items were being photographed). Reading
+    /// after the Glacier icon was switched off while items were being photographed). Reading
     /// the frames again after the capture and keeping only what stayed put throws those
     /// away, so the next capture can store them properly.
     static func settledTags(before: [String: CGRect], after: [String: CGRect], tolerance: CGFloat = 1) -> Set<String> {
@@ -537,7 +537,7 @@ enum ItemImages27 {
     ///
     /// MenuBarAgent pads items unevenly, so a captured tile has anywhere from no margin to
     /// a dozen points of it (measured on macOS 27.0). Drawing the tiles side by side then
-    /// spaces the glyphs unevenly, which is why the Ice Bar and the layout window trim each
+    /// spaces the glyphs unevenly, which is why the Glacier Bar and the layout window trim each
     /// tile to its glyph and add a margin of their own.
     static func glyphColumns(pixels: [UInt8], width: Int, height: Int) -> ClosedRange<Int>? {
         var first: Int?
@@ -564,7 +564,7 @@ enum ItemImages27 {
     /// The same pixels in one colour, keeping every pixel's opacity.
     ///
     /// MenuBarAgent draws a glyph light or dark to suit whatever sits behind the menu bar,
-    /// so a captured glyph can be the wrong colour for the Ice Bar's own flat background.
+    /// so a captured glyph can be the wrong colour for the Glacier Bar's own flat background.
     /// Recolouring gives the panel one readable look, the way a template image behaves.
     static func tinted(pixels: [UInt8], colour: (r: UInt8, g: UInt8, b: UInt8)) -> [UInt8] {
         var result = pixels
@@ -596,7 +596,7 @@ enum ItemImages27 {
     ///
     /// An item fading in or out is drawn part-transparent, so its capture holds a faint glyph
     /// inside a wide haze of menu bar that no background estimate can account for — the pale,
-    /// too-wide tiles that showed in the Ice Bar. Frames cannot catch this: a fading item
+    /// too-wide tiles that showed in the Glacier Bar. Frames cannot catch this: a fading item
     /// keeps its frame, it only loses opacity. The proportions can: measured on macOS 27.0,
     /// such tiles carry 1.6–2.3 % opaque pixels against 21–26 % faint ones, while items
     /// photographed standing still carry 5–20 % against 3–9 %. Far more haze than ink is the

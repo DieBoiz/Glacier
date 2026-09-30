@@ -1,22 +1,22 @@
 #!/bin/bash
 #
-# Verifies that the clock and Control Center open while Ice conceals items on macOS 27.
-# Requirements: Ice installed with Scripts/install.sh, Thaw not running.
+# Verifies that the clock and Control Center open while Glacier conceals items on macOS 27.
+# Requirements: Glacier installed with Scripts/install.sh, Thaw not running.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-WORK="$(mktemp -d /tmp/ice-verify-clock.XXXXXX)"
+WORK="$(mktemp -d /tmp/glacier-verify-clock.XXXXXX)"
 swiftc -O "$ROOT/Scripts/macos27/system-click.swift" -o "$WORK/system-click"
 
 quit_ice() {
     osascript -e 'tell application id "de.nlmyr.glacier" to quit' >/dev/null 2>&1 || true
-    for _ in $(seq 1 40); do pgrep -x Ice >/dev/null || return 0; sleep 0.25; done
+    for _ in $(seq 1 40); do pgrep -x Glacier >/dev/null || return 0; sleep 0.25; done
 }
 start_ice() {
     open "$HOME/Applications/Glacier.app"
-    for _ in $(seq 1 40); do pgrep -x Ice >/dev/null && return 0; sleep 0.25; done
+    for _ in $(seq 1 40); do pgrep -x Glacier >/dev/null && return 0; sleep 0.25; done
 }
-# Leave Ice running, the way the run found it. A run that ended with Ice down left the
+# Leave Glacier running, the way the run found it. A run that ended with Glacier down left the
 # machine concealing nothing, and whatever was looked at next showed nothing worth seeing.
 restore() {
     quit_ice

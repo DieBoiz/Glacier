@@ -5,10 +5,10 @@
 
 import Foundation
 
-/// Decides how long to wait for each process when Ice reads menu bar items
+/// Decides how long to wait for each process when Glacier reads menu bar items
 /// through Accessibility on macOS 27.
 ///
-/// Ice asks every running process for its items. Some processes never answer,
+/// Glacier asks every running process for its items. Some processes never answer,
 /// such as WebKit's content processes, and each costs the whole timeout on every
 /// read: measured 17 of them and 8.5 s of a 10 s read. A process that times out
 /// is skipped for a while, then asked again with a short timeout. A process that

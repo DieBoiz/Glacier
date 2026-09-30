@@ -26,7 +26,7 @@ struct MenuBarItemTag: Hashable, CustomStringConvertible {
     /// by this tag can be hidden.
     var canBeHidden: Bool {
         if #available(macOS 27.0, *), namespace == .menuBarAgent {
-            // Ice's assessment-mode assertion always keeps the numbered system items.
+            // Glacier's assessment-mode assertion always keeps the numbered system items.
             return false
         }
         return !MenuBarItemTag.nonHideableItems.contains(self) &&
@@ -34,7 +34,7 @@ struct MenuBarItemTag: Hashable, CustomStringConvertible {
     }
 
     /// A Boolean value that indicates whether the item identified
-    /// by this tag is a control item owned by Ice.
+    /// by this tag is a control item owned by Glacier.
     var isControlItem: Bool {
         MenuBarItemTag.controlItems.contains(self)
     }
@@ -69,7 +69,7 @@ struct MenuBarItemTag: Hashable, CustomStringConvertible {
 
     /// Creates a tag for the control item with the given identifier.
     private init(controlItem identifier: ControlItem.Identifier) {
-        self.init(namespace: .ice, title: identifier.rawValue)
+        self.init(namespace: .glacier, title: identifier.rawValue)
     }
 }
 
@@ -111,18 +111,18 @@ extension MenuBarItemTag {
         return items
     }()
 
-    /// An array of tags for items representing Ice's control items.
+    /// An array of tags for items representing Glacier's control items.
     static let controlItems = ControlItem.Identifier.allCases.map { $0.tag }
 
     // MARK: Control Items
 
-    /// The tag for Ice's control item for the "Visible" section.
+    /// The tag for Glacier's control item for the "Visible" section.
     static let visibleControlItem = MenuBarItemTag(controlItem: .visible)
 
-    /// The tag for Ice's control item for the "Hidden" section.
+    /// The tag for Glacier's control item for the "Hidden" section.
     static let hiddenControlItem = MenuBarItemTag(controlItem: .hidden)
 
-    /// The tag for Ice's control item for the "Always-Hidden" section.
+    /// The tag for Glacier's control item for the "Always-Hidden" section.
     static let alwaysHiddenControlItem = MenuBarItemTag(controlItem: .alwaysHidden)
 
     // MARK: Other Special Items
@@ -232,8 +232,8 @@ extension MenuBarItemTag {
 
 // MARK: MenuBarItemTag.Namespace Constants
 extension MenuBarItemTag.Namespace {
-    /// The namespace for the "Ice" process.
-    static let ice = string(Constants.bundleIdentifier)
+    /// The namespace for the "Glacier" process.
+    static let glacier = string(Constants.bundleIdentifier)
 
     /// The namespace for the "Control Center" process.
     static let controlCenter = string("com.apple.controlcenter")

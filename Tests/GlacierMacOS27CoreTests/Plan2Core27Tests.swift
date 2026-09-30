@@ -136,17 +136,17 @@ struct PhotoSchedule27Tests {
 
 @Suite("ItemClick27")
 struct ItemClick27Tests {
-    @Test("No activation when the Ice Bar is on the active menu bar's display")
+    @Test("No activation when the Glacier Bar is on the active menu bar's display")
     func sameDisplay() {
         #expect(!ItemClick27.needsMenuBarActivation(activeDisplayID: 3, glacierBarDisplayID: 3))
     }
 
-    @Test("Activation when the Ice Bar is on another display")
+    @Test("Activation when the Glacier Bar is on another display")
     func otherDisplay() {
         #expect(ItemClick27.needsMenuBarActivation(activeDisplayID: 3, glacierBarDisplayID: 1))
     }
 
-    @Test("No activation without a known Ice Bar display")
+    @Test("No activation without a known Glacier Bar display")
     func unknownDisplay() {
         #expect(!ItemClick27.needsMenuBarActivation(activeDisplayID: 3, glacierBarDisplayID: nil))
     }
@@ -672,7 +672,7 @@ struct ItemsZone27Tests {
 
     @Test("The remembered edge counts even when items are drawn further right")
     func rememberedWithDrawn() {
-        // Ice's cache holds only the items it manages, so the run of the bar can start
+        // Glacier's cache holds only the items it manages, so the run of the bar can start
         // further left than anything in it.
         #expect(ItemHitTest27.isInsideItemsArea(
             point: CGPoint(x: 1250, y: 12),

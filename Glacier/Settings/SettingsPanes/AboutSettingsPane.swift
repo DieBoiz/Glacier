@@ -8,24 +8,9 @@ import SwiftUI
 struct AboutSettingsPane: View {
     @EnvironmentObject var appState: AppState
     @ObservedObject var updatesManager: UpdatesManager
-    @Environment(\.openURL) private var openURL
 
     private var acknowledgementsURL: URL? {
         Bundle.main.url(forResource: "Acknowledgements", withExtension: "pdf")
-    }
-
-    private var contributeURL: URL {
-        // swiftlint:disable:next force_unwrapping
-        URL(string: "https://github.com/jordanbaird/Ice")!
-    }
-
-    private var issuesURL: URL {
-        contributeURL.appendingPathComponent("issues")
-    }
-
-    private var donateURL: URL {
-        // swiftlint:disable:next force_unwrapping
-        URL(string: "https://icemenubar.app/Donate")!
     }
 
     private var lastUpdateCheckString: String {
@@ -59,11 +44,13 @@ struct AboutSettingsPane: View {
             appIconAndCopyrightSection
                 .layoutPriority(1)
 
-            Spacer(minLength: 0)
-                .frame(maxHeight: 20)
+            if UpdatesManager.isEnabled {
+                Spacer(minLength: 0)
+                    .frame(maxHeight: 20)
 
-            updatesSection
-                .layoutPriority(1)
+                updatesSection
+                    .layoutPriority(1)
+            }
         }
         .padding(.top, 5)
         .padding([.horizontal, .bottom], 30)
@@ -84,7 +71,7 @@ struct AboutSettingsPane: View {
                 }
 
                 VStack(alignment: .leading) {
-                    Text("Ice")
+                    Text("Glacier")
                         .font(.system(size: 80))
                         .foregroundStyle(.primary)
 
@@ -94,6 +81,10 @@ struct AboutSettingsPane: View {
 
                     Text(Constants.copyrightString)
                         .font(.system(size: 14))
+                        .foregroundStyle(.secondary.opacity(0.67))
+
+                    Text("Based on [Ice](https://github.com/jordanbaird/Ice) by Jordan Baird, licensed under GPL-3.0.")
+                        .font(.system(size: 12))
                         .foregroundStyle(.secondary.opacity(0.67))
                 }
                 .fontWeight(.medium)
@@ -144,7 +135,7 @@ struct AboutSettingsPane: View {
     @ViewBuilder
     private func bottomBar(containerShape: some InsettableShape) -> some View {
         HStack {
-            Button("Quit Ice") {
+            Button("Quit Glacier") {
                 NSApp.terminate(nil)
             }
             Spacer()
@@ -152,15 +143,6 @@ struct AboutSettingsPane: View {
                 if let acknowledgementsURL {
                     NSWorkspace.shared.open(acknowledgementsURL)
                 }
-            }
-            Button("Contribute") {
-                openURL(contributeURL)
-            }
-            Button("Report a Bug") {
-                openURL(issuesURL)
-            }
-            Button("Support Ice", systemImage: "heart.circle.fill") {
-                openURL(donateURL)
             }
         }
         .padding(8)

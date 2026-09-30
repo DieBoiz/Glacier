@@ -1,4 +1,4 @@
-// Reads Ice's settings window: "sidebar <x> <y>" for the Menu Bar Layout entry, and
+// Reads Glacier's settings window: "sidebar <x> <y>" for the Menu Bar Layout entry, and
 // "image <row> <x> <y> <label>" for each layout item, rows 0 Visible, 1 Hidden, 2 Always Hidden.
 import AppKit
 import ApplicationServices
@@ -38,10 +38,10 @@ func walk(_ element: AXUIElement, depth: Int) {
     }
 }
 
-guard let ice = NSRunningApplication.runningApplications(withBundleIdentifier: "de.nlmyr.glacier").first else {
+guard let glacier = NSRunningApplication.runningApplications(withBundleIdentifier: "de.nlmyr.glacier").first else {
     exit(1)
 }
-let app = AXUIElementCreateApplication(ice.processIdentifier)
+let app = AXUIElementCreateApplication(glacier.processIdentifier)
 AXUIElementSetMessagingTimeout(app, 3)
 for window in value(app, kAXWindowsAttribute) as? [AXUIElement] ?? [] {
     guard let f = frame(window), f.height > 300 else {

@@ -1,5 +1,5 @@
 // Lists the menu bar items Accessibility reports on macOS 27, for diagnostics.
-// Build: swiftc -O Scripts/macos27/ax-items.swift -o /tmp/ice-ax-items
+// Build: swiftc -O Scripts/macos27/ax-items.swift -o /tmp/glacier-ax-items
 import AppKit
 import ApplicationServices
 

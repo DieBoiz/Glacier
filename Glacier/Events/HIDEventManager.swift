@@ -81,7 +81,7 @@ final class HIDEventManager: ObservableObject {
         guard let self, isEnabled, let appState, let screen = bestScreen(appState: appState) else {
             return event
         }
-        // Ice's own click that makes a display's menu bar active (see `ItemClicker27`).
+        // Glacier's own click that makes a display's menu bar active (see `ItemClicker27`).
         if event.cgEvent?.getIntegerValueField(.eventSourceUserData) == HIDEventManager.menuBarActivationMarker {
             return event
         }
@@ -320,7 +320,7 @@ extension HIDEventManager {
         }
     }
 
-    /// Whether a click at the given location, which Ice's cached frames took for empty bar,
+    /// Whether a click at the given location, which Glacier's cached frames took for empty bar,
     /// actually landed on a menu bar item. Only macOS 27 needs asking: there are no item
     /// windows there, and the cached frames miss items (see `MenuBarItemProvider27.hasItem`).
     private func isMenuBarItem(at location: CGPoint?) async -> Bool {
@@ -340,14 +340,14 @@ extension HIDEventManager {
             return
         }
 
-        // Make sure clicking the Ice icon doesn't trigger rehide.
+        // Make sure clicking the Glacier icon doesn't trigger rehide.
         if let glacierIcon = appState.menuBarManager.controlItem(withName: .visible) {
             guard event.window !== glacierIcon.window else {
                 return
             }
         }
 
-        // Only continue if the click is not inside the Ice Bar, at
+        // Only continue if the click is not inside the Glacier Bar, at
         // least one section is visible, and the mouse is not inside
         // the menu bar.
         guard
@@ -451,13 +451,13 @@ extension HIDEventManager {
 
     // MARK: Handle System Item Clicks (macOS 27)
 
-    /// Marks the clicks Ice replays, so the tap lets them through.
+    /// Marks the clicks Glacier replays, so the tap lets them through.
     private static let replayedClickMarker: Int64 = 0x1CE_27_C1C
 
     /// Times the steps of a bridged click, which happen on both opening and closing a panel.
     private static let bridgeLogger = Logger(subsystem: "de.nlmyr.glacier", category: "ClickBridge27")
 
-    /// Marks Ice's click that makes a display's menu bar active before an item is pressed.
+    /// Marks Glacier's click that makes a display's menu bar active before an item is pressed.
     static let menuBarActivationMarker: Int64 = 0x1CE_27_BA2
 
     /// The last empty menu bar spot hovered on the given display.
@@ -474,7 +474,7 @@ extension HIDEventManager {
         "com.apple.menuextra.wifi",
     ]
 
-    /// The system item whose panel Ice last opened, so a second click on the same item is
+    /// The system item whose panel Glacier last opened, so a second click on the same item is
     /// understood as the click that dismisses it.
     private nonisolated(unsafe) static var itemShowingPanel: String?
 
@@ -484,7 +484,7 @@ extension HIDEventManager {
             return event
         }
         if event.type == .leftMouseUp {
-            // A press Ice holds back has its release held back with it. MenuBarAgent would
+            // A press Glacier holds back has its release held back with it. MenuBarAgent would
             // otherwise be handed a release with no press behind it, moments before the
             // replayed click that carries both.
             guard let until = heldBackReleaseUntil, ContinuousClock.now < until else {
@@ -545,7 +545,7 @@ extension HIDEventManager {
                     return
                 }
                 // Waiting for a panel that never comes only delays the click, so an item
-                // that ignored the press is not asked again while Ice runs.
+                // that ignored the press is not asked again while Glacier runs.
                 Self.systemItemsIgnoringPress.insert(systemItem.identifier)
             }
             // The click is replayed the moment the assertion is really gone rather than on a
@@ -710,7 +710,7 @@ extension HIDEventManager {
         // `MenuBarSection.hide()`. Checking it here disabled the hide-on-leave
         // branch below as well — and that branch is what calls `hide()`. The flag
         // therefore latched off the only mechanism that could clear it, leaving
-        // the Ice Bar on screen indefinitely: on whatever display it was opened
+        // the Glacier Bar on screen indefinitely: on whatever display it was opened
         // on, while the user worked on another one. It is checked in the reveal
         // branch instead, where it belongs.
         guard appState.settings.general.showOnHover else {
@@ -870,7 +870,7 @@ extension HIDEventManager {
             return false
         }
 
-        // Ice icon must be vertically visible. Otherwise, we can infer
+        // Glacier icon must be vertically visible. Otherwise, we can infer
         // that the menu bar is hidden and the mouse is not inside.
         //
         // On macOS 27 the icon's window is only a placeholder, and its frame says
@@ -1059,20 +1059,20 @@ extension HIDEventManager {
     }
 
     /// A Boolean value that indicates whether the mouse pointer is within
-    /// the bounds of the Ice Bar panel.
+    /// the bounds of the Glacier Bar panel.
     func isMouseInsideGlacierBar(appState: AppState, location: MouseHelpers.Location? = MouseHelpers.location) -> Bool {
         guard let mouseLocation = location?.appKit else {
             return false
         }
         let panel = appState.menuBarManager.glacierBarPanel
         // Pad the frame to be more forgiving if the user accidentally
-        // moves their mouse outside of the Ice Bar.
+        // moves their mouse outside of the Glacier Bar.
         let paddedFrame = panel.frame.insetBy(dx: -15, dy: -15)
         return paddedFrame.contains(mouseLocation)
     }
 
     /// A Boolean value that indicates whether the mouse pointer is within
-    /// the bounds of the Ice icon.
+    /// the bounds of the Glacier icon.
     func isMouseInsideGlacierIcon(appState: AppState, location: MouseHelpers.Location? = MouseHelpers.location) -> Bool {
         guard
             let visibleSection = appState.menuBarManager.section(withName: .visible),

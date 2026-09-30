@@ -62,7 +62,7 @@ enum AXHelpers {
     /// given point before macOS 27.
     ///
     /// On macOS 27 the element at a display's origin is MenuBarAgent's window,
-    /// so the menu bar comes from the application that owns it. Ice's own menus
+    /// so the menu bar comes from the application that owns it. Glacier's own menus
     /// are skipped there: asking our own process from the main thread would wait
     /// for the main thread itself.
     static func applicationMenuBar(at point: CGPoint) -> UIElement? {

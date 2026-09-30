@@ -479,7 +479,7 @@ private final class MenuBarOverlayPanelContentView: NSView {
                 //   are actually updated on-screen. Since the view's drawing process relies
                 //   on getting an accurate position of each menu bar item, we need to use
                 //   something that publishes its changes only after the items are updated.
-                //   Ice's control items stay collapsed on macOS 27, so their frames never
+                //   Glacier's control items stay collapsed on macOS 27, so their frames never
                 //   change there. The item cache publishes whenever the items are read.
                 var itemChanges = appState.menuBarManager.sections.map { section in
                     section.controlItem.$onScreenFrame.replace(with: ()).eraseToAnyPublisher()

@@ -2,10 +2,10 @@
 #
 # Verifies the Menu Bar Layout window on macOS 27: while it is open every item is shown;
 # dragging an item into the Hidden row moves its application to the Hidden section, which
-# is concealed after the window closes and stays so after Ice restarts. The layout is
+# is concealed after the window closes and stays so after Glacier restarts. The layout is
 # restored afterwards.
 #
-# Requirements: Ice installed with Scripts/install.sh, EXT_APP with a window on the
+# Requirements: Glacier installed with Scripts/install.sh, EXT_APP with a window on the
 # external display, TEST_LABEL/TEST_BUNDLE naming a visible application with a menu bar
 # item. Leave the mouse and keyboard alone.
 #
@@ -17,7 +17,7 @@ EXT_APP="${EXT_APP:-Safari}"
 TEST_LABEL="${TEST_LABEL:-Pritunl}"
 TEST_BUNDLE="${TEST_BUNDLE:-com.electron.pritunl}"
 REGION="700,0,1220,34"
-WORK="$(mktemp -d /tmp/ice-verify-layout.XXXXXX)"
+WORK="$(mktemp -d /tmp/glacier-verify-layout.XXXXXX)"
 mkdir -p "$WORK/bin" "$WORK/steady"
 for tool in pointer input layout-ax analyze-frames; do
     swiftc -O "$ROOT/Scripts/macos27/$tool.swift" -o "$WORK/bin/$tool"
@@ -31,7 +31,7 @@ LAYOUT_BEFORE=$(defaults read de.nlmyr.glacier MacOS27Layout 2>/dev/null || echo
 
 quit_ice() {
     osascript -e 'tell application id "de.nlmyr.glacier" to quit' >/dev/null 2>&1 || true
-    for _ in $(seq 1 40); do pgrep -x Ice >/dev/null || return 0; sleep 0.25; done
+    for _ in $(seq 1 40); do pgrep -x Glacier >/dev/null || return 0; sleep 0.25; done
 }
 activate() { osascript -e "tell application \"$1\" to activate" >/dev/null; sleep 2.5; }
 external_leftmost() {
@@ -40,9 +40,9 @@ external_leftmost() {
 }
 start_ice() {
     open "$HOME/Applications/Glacier.app"
-    for _ in $(seq 1 40); do pgrep -x Ice >/dev/null && return 0; sleep 0.25; done
+    for _ in $(seq 1 40); do pgrep -x Glacier >/dev/null && return 0; sleep 0.25; done
 }
-# Leave Ice running, the way the run found it. A run that ended with Ice down left the
+# Leave Glacier running, the way the run found it. A run that ended with Glacier down left the
 # machine concealing nothing, and whatever was looked at next showed nothing worth seeing.
 restore() {
     quit_ice
@@ -68,7 +68,7 @@ activate "$EXT_APP"
 "$WORK/bin/pointer" glide 960 540; "$WORK/bin/pointer" hold 1
 BEFORE=$(external_leftmost before)
 
-# Reopening Ice shows its settings; select Menu Bar Layout.
+# Reopening Glacier shows its settings; select Menu Bar Layout.
 open "$HOME/Applications/Glacier.app"
 sleep 3
 "$WORK/bin/layout-ax" > "$WORK/settings.txt"
