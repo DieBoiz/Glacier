@@ -88,9 +88,15 @@ final class EventTap {
 
     private var machPort: CFMachPort?
     private var source: CFRunLoopSource?
+    private var timeoutTask: Task<Void, any Error>?
 
     /// The label associated with the event tap.
     let label: String
+
+    /// An error that can occur when creating an event tap.
+    struct CreationError: Error, CustomStringConvertible {
+        let description: String
+    }
 
     /// A Boolean value that indicates whether the event tap is enabled.
     var isEnabled: Bool {
@@ -109,6 +115,8 @@ final class EventTap {
     ///   - placement: The placement of the tap relative to other active taps.
     ///   - types: The event types to listen for.
     ///   - callback: A callback function to perform when the tap receives events.
+    ///
+    /// - Throws: A ``CreationError`` if the tap could not be created.
     init(
         label: String = #function,
         options: CGEventTapOptions,
@@ -116,10 +124,15 @@ final class EventTap {
         place: CGEventTapPlacement,
         types: [CGEventType],
         callback: @MainActor @escaping (_ proxy: Proxy, _ type: CGEventType, _ event: CGEvent) -> CGEvent?
-    ) {
+    ) throws {
         self.label = label
         self.callback = { @MainActor tap, pointer, type, event in
-            callback(Proxy(tap: tap, pointer: pointer), type, event).map(Unmanaged.passUnretained)
+            // Reenable the tap if disabled by the system.
+            if type == .tapDisabledByUserInput || type == .tapDisabledByTimeout {
+                tap.enable()
+                return nil
+            }
+            return callback(Proxy(tap: tap, pointer: pointer), type, event).map(Unmanaged.passUnretained)
         }
         guard let machPort = Self.createTapMachPort(
             location: location,
@@ -130,18 +143,20 @@ final class EventTap {
             userInfo: Unmanaged.passUnretained(self).toOpaque()
         ) else {
             Logger.eventTap.error("Error creating mach port for event tap \"\(self.label)\"")
-            return
+            throw CreationError(description: "Error creating mach port for event tap \"\(label)\"")
         }
         guard let source = CFMachPortCreateRunLoopSource(nil, machPort, 0) else {
             Logger.eventTap.error("Error creating run loop source for event tap \"\(self.label)\"")
-            return
+            CFMachPortInvalidate(machPort)
+            throw CreationError(description: "Error creating run loop source for event tap \"\(label)\"")
         }
         self.machPort = machPort
         self.source = source
     }
 
     deinit {
-        guard let machPort else {
+        timeoutTask?.cancel()
+        guard let machPort, let source else {
             return
         }
         CFRunLoopRemoveSource(runLoop, source, mode)
@@ -226,16 +241,17 @@ final class EventTap {
     /// Enables the event tap with the given timeout.
     func enable(timeout: Duration, onTimeout: @escaping () -> Void) {
         enable()
-        Task { [weak self] in
+        timeoutTask?.cancel()
+        timeoutTask = Task {
             try await Task.sleep(for: timeout)
-            if self?.isEnabled == true {
-                onTimeout()
-            }
+            onTimeout()
         }
     }
 
     /// Disables the event tap.
     func disable() {
+        timeoutTask?.cancel()
+        timeoutTask = nil
         withUnwrappedComponents { runLoop, source, machPort in
             CFRunLoopRemoveSource(runLoop, source, mode)
             CGEvent.tapEnable(tap: machPort, enable: false)
@@ -251,7 +267,7 @@ private func handleEvent(
     refcon: UnsafeMutableRawPointer?
 ) -> Unmanaged<CGEvent>? {
     guard let refcon else {
-        return Unmanaged.passRetained(event)
+        return Unmanaged.passUnretained(event)
     }
     let eventTap = Unmanaged<EventTap>.fromOpaque(refcon).takeUnretainedValue()
     return EventTap.performCallback(for: eventTap, proxy: proxy, type: type, event: event)
