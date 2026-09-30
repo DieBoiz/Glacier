@@ -6,19 +6,17 @@
 import Foundation
 
 enum Constants {
-    // swiftlint:disable force_unwrapping
     /// The version string in the app's bundle.
-    static let versionString = Bundle.main.versionString!
+    static let versionString = Bundle.main.versionString ?? "0"
 
     /// The build string in the app's bundle.
-    static let buildString = Bundle.main.buildString!
+    static let buildString = Bundle.main.buildString ?? "0"
 
     /// The user-readable copyright string in the app's bundle.
-    static let copyrightString = Bundle.main.copyrightString!
+    static let copyrightString = Bundle.main.copyrightString ?? ""
 
     /// The bundle identifier of the app.
-    static let bundleIdentifier = Bundle.main.bundleIdentifier!
-    // swiftlint:enable force_unwrapping
+    static let bundleIdentifier = Bundle.main.bundleIdentifier ?? "com.jordanbaird.Ice"
 
     /// The identifier for the settings window.
     static let settingsWindowID = "SettingsWindow"

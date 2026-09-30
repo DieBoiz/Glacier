@@ -167,11 +167,6 @@ extension Bridging {
         getWindowCount()
     }
 
-    /// The number of windows currently on-screen.
-    static var onScreenWindowCount: Int {
-        getOnScreenWindowCount()
-    }
-
     /// Returns a list of window identifiers using the given options.
     ///
     /// - Parameter option: Options that filter the returned list.

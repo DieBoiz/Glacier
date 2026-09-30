@@ -91,19 +91,22 @@ extension CGImage {
     func averageColor(alphaThreshold: CGFloat = 0.5, makeOpaque: Bool = false) -> CGColor? {
         func createPixelData(width: Int, height: Int) -> [UInt32]? {
             var data = [UInt32](repeating: 0, count: width * height)
-            guard let context = CGContext(
-                data: &data,
-                width: width,
-                height: height,
-                bitsPerComponent: 8,
-                bytesPerRow: width * 4,
-                space: CGColorSpaceCreateDeviceRGB(),
-                bitmapInfo: CGImageByteOrderInfo.order32Little.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue
-            ) else {
-                return nil
+            let didDraw = data.withUnsafeMutableBytes { buffer -> Bool in
+                guard let context = CGContext(
+                    data: buffer.baseAddress,
+                    width: width,
+                    height: height,
+                    bitsPerComponent: 8,
+                    bytesPerRow: width * 4,
+                    space: CGColorSpaceCreateDeviceRGB(),
+                    bitmapInfo: CGImageByteOrderInfo.order32Little.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue
+                ) else {
+                    return false
+                }
+                context.draw(self, in: CGRect(x: 0, y: 0, width: width, height: height))
+                return true
             }
-            context.draw(self, in: CGRect(x: 0, y: 0, width: width, height: height))
-            return data
+            return didDraw ? data : nil
         }
 
         func computeComponent(shift: UInt32, pixel: UInt32) -> Int {
@@ -267,7 +270,7 @@ extension CGImage {
                 // Use memcmp to efficiently check the entire row for zeroed out alpha.
                 let rowByteBlock = bitmapData + (row * cgContext.bytesPerRow)
                 if memcmp(rowByteBlock, zeroByteBlock, image.width) == 0 {
-                    return true
+                    return false
                 }
                 // We found a non-zero row. Check each pixel until we find one that is opaque.
                 return columnRange.contains { column in
@@ -299,15 +302,6 @@ extension CGImage {
         let maxAlpha = UInt8(maxAlpha.clamped(to: 0...1) * 255)
         let context = TransparencyContext(image: self, maxAlpha: maxAlpha)
         return context?.trim(edges: edges)
-    }
-
-    /// Returns a Boolean value that indicates whether the image is transparent.
-    ///
-    /// - Parameter maxAlpha: The maximum alpha value to consider transparent.
-    ///   Pixels with alpha values above this value will be considered opaque.
-    func isTransparent(maxAlpha: CGFloat = 0) -> Bool {
-        // FIXME: This needs a dedicated implementation instead of relying on `trimmingTransparentPixels`
-        trimmingTransparentPixels(maxAlpha: maxAlpha) == nil
     }
 }
 
@@ -427,9 +421,8 @@ extension NSScreen {
 
     /// The display identifier of the screen.
     var displayID: CGDirectDisplayID {
-        // Value and type are guaranteed here, so force casting is okay.
-        // swiftlint:disable:next force_cast
-        deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as! CGDirectDisplayID
+        let number = deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber
+        return number?.uint32Value ?? CGMainDisplayID()
     }
 
     /// A Boolean value that indicates whether the screen has a notch.
