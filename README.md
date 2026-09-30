@@ -18,6 +18,10 @@ Glacier is a menu bar manager for macOS. It hides and shows menu bar items, lets
 - macOS 27
 - Xcode 27 to build
 
+## Install
+
+Download `Glacier-<version>.zip` from the [latest release](../../releases/latest), unzip it and move `Glacier.app` into your `Applications` folder. On first launch, grant the Accessibility and Screen Recording permissions when asked.
+
 ## Build
 
 Open `Glacier.xcodeproj` in Xcode and run the `Glacier` scheme, or build from the command line:

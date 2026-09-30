@@ -1,5 +1,6 @@
 name: Lint Swift Files
 on:
+  workflow_dispatch:
   push:
     branches: [ "main" ]
     paths:
