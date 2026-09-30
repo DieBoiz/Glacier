@@ -183,22 +183,6 @@ extension WindowInfo {
     }
 }
 
-// MARK: All Windows
-extension WindowInfo {
-    /// Returns the current windows.
-    ///
-    /// - Parameter excludeDesktopWindows: A Boolean value that indicates whether
-    ///   to exclude desktop owned windows, such as the wallpaper and desktop icons.
-    static func getAllWindows(excludeDesktopWindows: Bool = false) -> [WindowInfo] {
-        var option = CGWindowListOption.optionAll
-        if excludeDesktopWindows {
-            option.insert(.excludeDesktopElements)
-        }
-        let context = WindowListContext(windowListOption: option, referenceWindow: nil)
-        return getWindowList(context: context)
-    }
-}
-
 // MARK: On Screen Windows
 extension WindowInfo {
     /// Returns the on screen windows.
