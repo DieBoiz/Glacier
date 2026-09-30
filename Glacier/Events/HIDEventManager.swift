@@ -55,7 +55,6 @@ final class HIDEventManager: ObservableObject {
     /// The pending show-on-hover task, with what it is going to do.
     private var hoverTask: (action: HoverAction, task: Task<Void, Never>)?
 
-
     /// A Boolean value that indicates whether the manager is enabled.
     private var isEnabled = false {
         didSet {
@@ -583,8 +582,6 @@ extension HIDEventManager {
         return .milliseconds(stored > 0 ? min(max(stored, 30), 2000) : 120)
     }
 
-
-
     /// The window numbers currently on screen.
     private static func windowNumbers() -> Set<Int> {
         let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
@@ -888,9 +885,9 @@ extension HIDEventManager {
 
         // Infer the menu bar frame from the screen frame.
         return mouseLocation.x >= screen.frame.minX &&
-        mouseLocation.x <= screen.frame.maxX &&
-        mouseLocation.y <= screen.frame.maxY &&
-        mouseLocation.y >= screen.visibleFrame.maxY
+            mouseLocation.x <= screen.frame.maxX &&
+            mouseLocation.y <= screen.frame.maxY &&
+            mouseLocation.y >= screen.visibleFrame.maxY
     }
 
     /// A Boolean value that indicates whether the mouse pointer is within

@@ -410,7 +410,7 @@ private struct SettingsButton: View {
         Button(action: action) {
             Image(.iceCubeStroke)
                 .resizable()
-                .aspectRatio(contentMode: .fit)
+                .scaledToFit()
                 .foregroundStyle(.secondary)
                 .padding(2)
         }
@@ -441,7 +441,7 @@ private struct ShowItemButton: View {
 
                 Image(systemName: "return")
                     .resizable()
-                    .aspectRatio(contentMode: .fit)
+                    .scaledToFit()
                     .frame(width: 11, height: 11)
                     .foregroundStyle(.secondary)
                     .fontWeight(.bold)
@@ -569,7 +569,7 @@ private struct MenuBarSearchItemView: View {
         if let appIcon {
             Image(nsImage: appIcon)
                 .resizable()
-                .aspectRatio(contentMode: .fit)
+                .scaledToFit()
                 .frame(width: dimension, height: dimension)
         } else {
             RoundedRectangle(cornerRadius: 5)
@@ -578,7 +578,7 @@ private struct MenuBarSearchItemView: View {
                 .overlay {
                     Image(systemName: "rectangle.topthird.inset.filled")
                         .resizable()
-                        .aspectRatio(contentMode: .fit)
+                        .scaledToFit()
                         .foregroundStyle(.white)
                         .padding(3)
                         .shadow(radius: 2)
