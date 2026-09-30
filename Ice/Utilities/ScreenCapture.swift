@@ -4,6 +4,7 @@
 //
 
 import CoreGraphics
+import os
 import ScreenCaptureKit
 
 /// A namespace for screen capture operations.
@@ -36,13 +37,13 @@ enum ScreenCapture {
     /// result with a newly computed value.
     static func cachedCheckPermissions(reset: Bool = false) -> Bool {
         enum Context {
-            static var cachedResult: Bool?
+            static let cachedResult = OSAllocatedUnfairLock<Bool?>(initialState: nil)
         }
-        if !reset, let result = Context.cachedResult {
+        if !reset, let result = Context.cachedResult.withLock({ $0 }) {
             return result
         }
         let result = checkPermissions()
-        Context.cachedResult = result
+        Context.cachedResult.withLock { $0 = result }
         return result
     }
 
