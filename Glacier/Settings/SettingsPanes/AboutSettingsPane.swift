@@ -83,7 +83,7 @@ struct AboutSettingsPane: View {
                         .font(.system(size: 14))
                         .foregroundStyle(.secondary.opacity(0.67))
 
-                    Text("Based on [Ice](https://github.com/jordanbaird/Ice) by Jordan Baird, licensed under GPL-3.0.")
+                    Text("Based on [Ice](https://github.com/jordanbaird/Ice) by Jordan Baird, licensed under GPL-3.0. macOS 27 support builds on work by Yevhenii Rabenko, Carlos Santos, [Barometer](https://github.com/mackid1993/Barometer) and [Thaw](https://github.com/thaw-app/Thaw).")
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary.opacity(0.67))
                 }

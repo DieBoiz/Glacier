@@ -50,6 +50,8 @@ swift test
 
 Glacier is based on [Ice](https://github.com/jordanbaird/Ice) by Jordan Baird, licensed under the GPL-3.0.
 
+The macOS 27 support builds on the pull requests to Ice by [Yevhenii Rabenko](https://github.com/RabenkoYevhenii) and [Carlos Santos](https://github.com/carlossantos74). Parts of it are adapted from [Barometer](https://github.com/mackid1993/Barometer) and [Thaw](https://github.com/thaw-app/Thaw), both licensed under the GPL-3.0. Thank you to everyone involved.
+
 Copyright (C) 2025 Jordan Baird
 
 Copyright (C) 2026 Noel Mayr
