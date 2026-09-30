@@ -57,17 +57,62 @@ extension Task where Failure == any Error {
         tolerance: C.Instant.Duration?,
         clock: C
     ) async throws -> Success {
-        try await withThrowingTaskGroup(of: Success.self) { group in
-            group.addTask(operation: operation)
-            group.addTask {
-                try await _Concurrency.Task.sleep(for: timeout, tolerance: tolerance, clock: clock)
-                throw TaskTimeoutError()
+        let state = TaskTimeoutState<Success>()
+        let operationTask = _Concurrency.Task {
+            do {
+                state.finish(with: .success(try await operation()))
+            } catch {
+                state.finish(with: .failure(error))
             }
-            guard let success = try await group.next() else {
-                throw _Concurrency.CancellationError()
+        }
+        let timeoutTask = _Concurrency.Task {
+            try await _Concurrency.Task.sleep(for: timeout, tolerance: tolerance, clock: clock)
+            state.finish(with: .failure(TaskTimeoutError()))
+        }
+        defer {
+            operationTask.cancel()
+            timeoutTask.cancel()
+        }
+        return try await withTaskCancellationHandler {
+            try await state.result()
+        } onCancel: {
+            state.finish(with: .failure(_Concurrency.CancellationError()))
+        }
+    }
+}
+
+// MARK: - TaskTimeoutState
+
+/// A one-shot state that resumes its waiter with the first result it receives,
+/// without waiting on operations that don't respond to cancellation.
+private final class TaskTimeoutState<Success>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storedResult: Result<Success, any Error>?
+    private var continuation: CheckedContinuation<Success, any Error>?
+
+    func finish(with result: Result<Success, any Error>) {
+        lock.lock()
+        guard storedResult == nil else {
+            lock.unlock()
+            return
+        }
+        storedResult = result
+        let continuation = continuation
+        self.continuation = nil
+        lock.unlock()
+        continuation?.resume(with: result)
+    }
+
+    func result() async throws -> Success {
+        try await withCheckedThrowingContinuation { continuation in
+            lock.lock()
+            if let storedResult {
+                lock.unlock()
+                continuation.resume(with: storedResult)
+            } else {
+                self.continuation = continuation
+                lock.unlock()
             }
-            group.cancelAll()
-            return success
         }
     }
 }
