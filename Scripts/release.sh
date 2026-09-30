@@ -27,7 +27,8 @@ echo "==> Building with $IDENTITY"
 xcodebuild -project "$ROOT/Glacier.xcodeproj" -scheme Glacier -configuration Release \
     -destination 'platform=macOS' -derivedDataPath "$DERIVED" \
     CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="$IDENTITY" \
-    OTHER_CODE_SIGN_FLAGS="--timestamp" ENABLE_HARDENED_RUNTIME=YES clean build \
+    OTHER_CODE_SIGN_FLAGS="--timestamp" ENABLE_HARDENED_RUNTIME=YES \
+    CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO clean build \
     | tail -3
 
 APP="$DERIVED/Build/Products/Release/Glacier.app"
@@ -36,6 +37,20 @@ APP="$DERIVED/Build/Products/Release/Glacier.app"
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
 mkdir -p "$OUT"
 ZIP="$OUT/Glacier-$VERSION.zip"
+
+# Sparkle ships pre-signed binaries. Re-sign them inside out with our identity
+# and a secure timestamp, then seal the app again.
+SPARKLE="$APP/Contents/Frameworks/Sparkle.framework/Versions/B"
+if [ -d "$SPARKLE" ]; then
+    echo "==> Re-signing Sparkle"
+    SIGN=(codesign --force --timestamp --options runtime --sign "$IDENTITY")
+    "${SIGN[@]}" "$SPARKLE/XPCServices/Installer.xpc"
+    "${SIGN[@]}" --preserve-metadata=entitlements "$SPARKLE/XPCServices/Downloader.xpc"
+    "${SIGN[@]}" "$SPARKLE/Autoupdate"
+    "${SIGN[@]}" "$SPARKLE/Updater.app"
+    "${SIGN[@]}" "$APP/Contents/Frameworks/Sparkle.framework"
+    "${SIGN[@]}" --preserve-metadata=entitlements "$APP"
+fi
 
 echo "==> Verifying the signature"
 codesign --verify --deep --strict "$APP"
