@@ -17,7 +17,7 @@ REPO="${REPO:-DieBoiz/Glacier}"
 BIN="${SPARKLE_BIN:-$(ls -d "$HOME"/Library/Developer/Xcode/DerivedData/Glacier-*/SourcePackages/artifacts/sparkle/Sparkle/bin 2>/dev/null | head -1)}"
 [ -x "$BIN/generate_appcast" ] || { echo "error: Sparkle tools not found, set SPARKLE_BIN" >&2; exit 1; }
 
-NAME="$(basename "$ZIP" .zip)"
+NAME="$(basename "${ZIP%.*}")"
 VERSION="${NAME#Glacier-}"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT

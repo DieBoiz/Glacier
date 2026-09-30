@@ -14,6 +14,6 @@
 ## Each release
 
 1. Raise `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in the Xcode project.
-2. Run `Scripts/release.sh`. It builds, signs, notarizes, staples and writes `release/Glacier-<version>.zip`.
-3. Upload the zip to a GitHub release.
-4. With updates enabled, run `Scripts/appcast.sh release/Glacier-<version>.zip`, then commit and push `docs/appcast.xml`. The zip has to be attached to the GitHub release `v<version>` first.
+2. Run `Scripts/release.sh`. It builds, signs, notarizes, staples and writes `release/Glacier-<version>.zip` and, with `create-dmg` installed (`brew install create-dmg`), a notarized `release/Glacier-<version>.dmg`. Sparkle re-signing is handled by the script. The disk image background comes from `Scripts/dmg-background.py`.
+3. Upload the dmg and the zip to a GitHub release `v<version>`.
+4. With updates enabled, run `Scripts/appcast.sh release/Glacier-<version>.dmg`, then commit and push `docs/appcast.xml`. The dmg has to be attached to the GitHub release `v<version>` first.

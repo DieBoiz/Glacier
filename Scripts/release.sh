@@ -1,7 +1,8 @@
 #!/bin/bash
 #
 # Builds Glacier for distribution: signs it with a Developer ID certificate,
-# notarizes it with Apple and packages it as a zip in ./release.
+# notarizes it with Apple and packages it as a zip and, if create-dmg is
+# installed, as a disk image in ./release.
 #
 # Requirements:
 #   - a "Developer ID Application" certificate in the login keychain
@@ -66,6 +67,25 @@ echo "==> Packaging"
 rm -f "$ZIP"
 ditto -c -k --keepParent "$APP" "$ZIP"
 spctl --assess --type execute --verbose "$APP"
+
+if command -v create-dmg >/dev/null; then
+    echo "==> Building the disk image"
+    DMG="$OUT/Glacier-$VERSION.dmg"
+    STAGE="$(mktemp -d)"
+    trap 'rm -rf "$STAGE"' EXIT
+    cp -R "$APP" "$STAGE/"
+    rm -f "$DMG"
+    create-dmg --volname "Glacier" \
+        --background "$ROOT/Resources/dmg-background.png" \
+        --window-size 660 400 --icon-size 112 \
+        --icon "Glacier.app" 180 190 --app-drop-link 480 190 \
+        --hide-extension "Glacier.app" \
+        --codesign "$IDENTITY" --notarize "$PROFILE" \
+        "$DMG" "$STAGE"
+    shasum -a 256 "$DMG"
+else
+    echo "note: create-dmg not installed, skipping the disk image (brew install create-dmg)"
+fi
 
 echo "==> Done: $ZIP"
 shasum -a 256 "$ZIP"
