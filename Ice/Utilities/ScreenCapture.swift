@@ -4,6 +4,7 @@
 //
 
 import CoreGraphics
+import os
 import ScreenCaptureKit
 
 /// A namespace for screen capture operations.
@@ -29,17 +30,15 @@ enum ScreenCapture {
     /// and returning it.
     static func cachedCheckPermissions(reset: Bool = false) -> Bool {
         enum Context {
-            static var lastCheckResult: Bool?
+            static let lastCheckResult = OSAllocatedUnfairLock<Bool?>(initialState: nil)
         }
 
-        if !reset {
-            if let lastCheckResult = Context.lastCheckResult {
-                return lastCheckResult
-            }
+        if !reset, let lastCheckResult = Context.lastCheckResult.withLock({ $0 }) {
+            return lastCheckResult
         }
 
         let realResult = checkPermissions()
-        Context.lastCheckResult = realResult
+        Context.lastCheckResult.withLock { $0 = realResult }
         return realResult
     }
 
@@ -61,11 +60,8 @@ enum ScreenCapture {
     ///   - screenBounds: The bounds to capture. Pass `nil` to capture the minimum rectangle that encloses the windows.
     ///   - option: Options that specify the image to be captured.
     static func captureWindows(_ windowIDs: [CGWindowID], screenBounds: CGRect? = nil, option: CGWindowImageOption = []) -> CGImage? {
-        let pointer = UnsafeMutablePointer<UnsafeRawPointer?>.allocate(capacity: windowIDs.count)
-        for (index, windowID) in windowIDs.enumerated() {
-            pointer[index] = UnsafeRawPointer(bitPattern: UInt(windowID))
-        }
-        guard let windowArray = CFArrayCreate(kCFAllocatorDefault, pointer, windowIDs.count, nil) else {
+        var pointers = windowIDs.map { UnsafeRawPointer(bitPattern: UInt($0)) }
+        guard let windowArray = CFArrayCreate(kCFAllocatorDefault, &pointers, pointers.count, nil) else {
             return nil
         }
         return .windowListImage(from: screenBounds ?? .null, windowArray: windowArray, imageOption: option)
