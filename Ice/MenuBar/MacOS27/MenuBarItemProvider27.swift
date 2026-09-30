@@ -149,10 +149,10 @@ enum MenuBarItemProvider27 {
                 return true
             }
             // An item can hand back one of its children instead.
-            guard let parent = value(element, kAXParentAttribute) else {
+            guard let parent = value(element, kAXParentAttribute), CFGetTypeID(parent) == AXUIElementGetTypeID() else {
                 return false
             }
-            return string(parent as! AXUIElement, kAXSubroleAttribute) == "AXMenuExtra"
+            return string(parent as! AXUIElement, kAXSubroleAttribute) == "AXMenuExtra" // swiftlint:disable:this force_cast
         }.value
     }
 
