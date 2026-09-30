@@ -29,7 +29,7 @@ as_bool() { case "$1" in 1|true|YES|yes) echo true ;; *) echo false ;; esac; }
 ORIGINAL_GLACIER_BAR=$(as_bool "$(defaults read de.nlmyr.glacier UseGlacierBar 2>/dev/null || echo 1)")
 LAYOUT_BEFORE=$(defaults read de.nlmyr.glacier MacOS27Layout 2>/dev/null || echo "{}")
 
-quit_ice() {
+quit_glacier() {
     osascript -e 'tell application id "de.nlmyr.glacier" to quit' >/dev/null 2>&1 || true
     for _ in $(seq 1 40); do pgrep -x Glacier >/dev/null || return 0; sleep 0.25; done
 }
@@ -38,14 +38,14 @@ external_leftmost() {
     screencapture -x -R "$REGION" "$WORK/steady/$1.png"
     "$WORK/bin/analyze-frames" "$WORK/steady" 700 1220 | awk -v n="$1" '$1 == n { print $2 }'
 }
-start_ice() {
+start_glacier() {
     open "$HOME/Applications/Glacier.app"
     for _ in $(seq 1 40); do pgrep -x Glacier >/dev/null && return 0; sleep 0.25; done
 }
 # Leave Glacier running, the way the run found it. A run that ended with Glacier down left the
 # machine concealing nothing, and whatever was looked at next showed nothing worth seeing.
 restore() {
-    quit_ice
+    quit_glacier
     defaults write de.nlmyr.glacier MacOS27Layout "$LAYOUT_BEFORE"
     defaults write de.nlmyr.glacier UseGlacierBar -bool "$ORIGINAL_GLACIER_BAR"
     local after
@@ -56,11 +56,11 @@ restore() {
         echo "FAIL  the saved layout was left changed; it was:"
         printf '%s\n' "$LAYOUT_BEFORE"
     fi
-    start_ice
+    start_glacier
 }
 trap restore EXIT
 
-quit_ice
+quit_glacier
 defaults write de.nlmyr.glacier UseGlacierBar -bool true
 open "$HOME/Applications/Glacier.app"
 sleep 10
@@ -93,7 +93,7 @@ sleep 3
 activate "$EXT_APP"
 "$WORK/bin/pointer" glide 960 540; "$WORK/bin/pointer" hold 1
 AFTER_CLOSE=$(external_leftmost after-close)
-quit_ice
+quit_glacier
 open "$HOME/Applications/Glacier.app"
 sleep 10
 activate "$EXT_APP"

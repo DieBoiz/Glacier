@@ -24,7 +24,7 @@ swiftc -O "$ROOT/Scripts/macos27/pointer.swift" -o "$WORK/bin/pointer"
 swiftc -O "$ROOT/Scripts/macos27/analyze-frames.swift" -o "$WORK/bin/analyze-frames"
 
 now() { perl -MTime::HiRes=time -e 'printf "%.3f", time'; }
-quit_ice() {
+quit_glacier() {
     osascript -e 'tell application id "de.nlmyr.glacier" to quit' >/dev/null 2>&1 || true
     for _ in $(seq 1 40); do pgrep -x Glacier >/dev/null || return 0; sleep 0.25; done
 }
@@ -42,21 +42,21 @@ leftmost() {
 as_bool() { case "$1" in 1|true|YES|yes) echo true ;; *) echo false ;; esac; }
 ORIGINAL_GLACIER_BAR=$(as_bool "$(defaults read de.nlmyr.glacier UseGlacierBar 2>/dev/null || echo 1)")
 ORIGINAL_HOVER=$(as_bool "$(defaults read de.nlmyr.glacier ShowOnHover 2>/dev/null || echo 1)")
-start_ice() {
+start_glacier() {
     open "$HOME/Applications/Glacier.app"
     for _ in $(seq 1 40); do pgrep -x Glacier >/dev/null && return 0; sleep 0.25; done
 }
 # Leave Glacier running, the way the run found it. A run that ended with Glacier down left the
 # machine concealing nothing, and whatever was looked at next showed nothing worth seeing.
 restore() {
-    quit_ice
+    quit_glacier
     defaults write de.nlmyr.glacier UseGlacierBar -bool "$ORIGINAL_GLACIER_BAR"
     defaults write de.nlmyr.glacier ShowOnHover -bool "$ORIGINAL_HOVER"
-    start_ice
+    start_glacier
 }
 trap restore EXIT
 
-quit_ice
+quit_glacier
 "$WORK/bin/pointer" glide 960 540
 ALL_VISIBLE=$(leftmost all-visible)
 
@@ -87,7 +87,7 @@ wait "$CAPTURE"
 LOWEST=$("$WORK/bin/analyze-frames" "$WORK/cycles" "$REGION_X" "$REGION_W" | awk '$2 >= 0 { print $2 }' | sort -n | head -1)
 FRAMES=$(ls "$WORK/cycles" | wc -l | tr -d ' ')
 
-quit_ice
+quit_glacier
 sleep 2
 AFTER_QUIT=$(leftmost after-quit)
 

@@ -8,23 +8,23 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 WORK="$(mktemp -d /tmp/glacier-verify-clock.XXXXXX)"
 swiftc -O "$ROOT/Scripts/macos27/system-click.swift" -o "$WORK/system-click"
 
-quit_ice() {
+quit_glacier() {
     osascript -e 'tell application id "de.nlmyr.glacier" to quit' >/dev/null 2>&1 || true
     for _ in $(seq 1 40); do pgrep -x Glacier >/dev/null || return 0; sleep 0.25; done
 }
-start_ice() {
+start_glacier() {
     open "$HOME/Applications/Glacier.app"
     for _ in $(seq 1 40); do pgrep -x Glacier >/dev/null && return 0; sleep 0.25; done
 }
 # Leave Glacier running, the way the run found it. A run that ended with Glacier down left the
 # machine concealing nothing, and whatever was looked at next showed nothing worth seeing.
 restore() {
-    quit_ice
-    start_ice
+    quit_glacier
+    start_glacier
 }
 trap restore EXIT
 
-quit_ice
+quit_glacier
 open "$HOME/Applications/Glacier.app"
 sleep 10
 
