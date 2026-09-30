@@ -48,12 +48,19 @@ struct IceSlider<Value: BinaryFloatingPoint, ValueLabel: View, ValueLabelSelecta
         CompactSlider(
             value: value,
             in: bounds,
-            step: step,
-            handleVisibility: .hovering(width: 1)
-        ) {
+            step: step
+        )
+        .compactSliderHandleStyle(.rectangle(visibility: .focused, width: 1))
+        .compactSliderOptionsByRemoving(.enabledHapticFeedback)
+        .frame(minHeight: .compactSliderMinHeight)
+        .overlay(alignment: .leading) {
             valueLabel
                 .textSelection(valueLabelSelectability)
+                .padding(.horizontal, 8)
         }
-        .compactSliderDisabledHapticFeedback(true)
     }
+}
+
+extension CGFloat {
+    static let compactSliderMinHeight: CGFloat = 24
 }
